@@ -5,7 +5,6 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { Analytics } from "@vercel/analytics/react";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
 import { PasswordGate } from "@/components/PasswordGate";
-import { PWAInstallBanner } from "@/components/PWAInstallBanner";
 import { siteConfig } from "@/lib/config/site-config";
 
 
@@ -24,14 +23,6 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   icons: {
     icon: '/icon.png',
-    apple: '/icon.png',
-  },
-  manifest: '/manifest.json',
-  themeColor: '#000000',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: siteConfig.name,
   },
 };
 
@@ -47,7 +38,6 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <ThemeProvider>
-          <PWAInstallBanner />
           <PasswordGate hasEnvPassword={!!process.env.ACCESS_PASSWORD}>
             {children}
           </PasswordGate>
