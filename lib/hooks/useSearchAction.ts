@@ -7,6 +7,7 @@ import type { SortOption } from '@/lib/store/settings-store';
 import { settingsStore } from '@/lib/store/settings-store';
 import type { Video } from '@/lib/types';
 import { useSearchState } from './useSearchState';
+import { toSimplified } from '@/lib/utils/chinese-convert';
 
 type SearchState = ReturnType<typeof useSearchState>;
 
@@ -58,10 +59,13 @@ export function useSearchAction({ state, onCacheUpdate, onUrlUpdate }: UseSearch
         onUrlUpdate(searchQuery);
 
         try {
+            // Convert Traditional Chinese to Simplified for better search compatibility
+            const convertedQuery = toSimplified(searchQuery);
+
             const response = await fetch('/api/search-parallel', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: searchQuery, sources: targetSources }),
+                body: JSON.stringify({ query: convertedQuery, sources: targetSources }),
                 signal: abortControllerRef.current.signal,
             });
 
@@ -74,7 +78,7 @@ export function useSearchAction({ state, onCacheUpdate, onUrlUpdate }: UseSearch
 
             await processSearchStream({
                 reader,
-                currentQuery: searchQuery.trim(),
+                currentQuery: convertedQuery,
                 onStart: (total) => setTotalSources(total),
                 onVideos: (newVideos, sourceId) => {
                     // Optimized: Insert new videos in sorted position

@@ -8,6 +8,7 @@ import { NextRequest } from 'next/server';
 import { searchVideos } from '@/lib/api/client';
 import { getSourceById } from '@/lib/api/video-sources';
 import { getSourceName } from '@/lib/utils/source-names';
+import { toSimplified } from '@/lib/utils/chinese-convert';
 
 export const runtime = 'edge';
 
@@ -18,7 +19,10 @@ export async function POST(request: NextRequest) {
     async start(controller) {
       try {
         const body = await request.json();
-        const { query, sources: sourceConfigs, page = 1 } = body;
+        let { query, sources: sourceConfigs, page = 1 } = body;
+
+        // Convert Traditional Chinese to Simplified immediately
+        query = toSimplified(query);
 
         // Validate input
         if (!query || typeof query !== 'string' || query.trim().length === 0) {
