@@ -37,7 +37,7 @@ function HomePage() {
 
   return (
     <div className="min-h-screen">
-      {/* Glass Navbar - 支援繁體中文搜尋 */}
+      {/* Glass Navbar */}
       <Navbar onReset={handleReset} />
 
       {/* Search Form - Separate from navbar */}
