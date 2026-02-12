@@ -6,12 +6,17 @@
 import type { VideoItem } from '@/lib/types';
 
 /**
- * Check if title contains at least 2 consecutive characters from search query
+ * Check if title contains query or at least 2 consecutive characters from search query
  * This filters out irrelevant results
  */
 export function hasMinimumMatch(title: string, query: string): boolean {
   const normalizedTitle = title.toLowerCase();
   const normalizedQuery = query.toLowerCase().trim();
+
+  // For single character queries, check direct match
+  if (normalizedQuery.length === 1) {
+    return normalizedTitle.includes(normalizedQuery);
+  }
 
   // Extract all 2+ character substrings from query
   for (let i = 0; i <= normalizedQuery.length - 2; i++) {
