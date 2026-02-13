@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, RefObject } from 'react';
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react';
 
 export type RotationAngle = 0 | 90 | 180 | 270;
 
@@ -17,11 +17,11 @@ export function useVideoRotation({
 }: UseVideoRotationOptions) {
   const [rotation, setRotation] = useState<RotationAngle>(0);
   const [isPortrait, setIsPortrait] = useState(false);
-  const [autoRotationEnabled, setAutoRotationEnabled] = useState(true);
   // 記住影片尺寸作為 state，讓樣式能正確更新
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+  const prevFullscreenRef = useRef(isFullscreen);
 
-  // 偵測影片是否為直立方向
+  // 偵測影片是否為直立方向（只更新 state，不自動旋轉）
   const detectVideoOrientation = useCallback(() => {
     const video = videoRef.current;
     if (!video || !enabled) return;
@@ -30,13 +30,8 @@ export function useVideoRotation({
     if (videoWidth === 0 || videoHeight === 0) return;
 
     setVideoDimensions({ width: videoWidth, height: videoHeight });
-    const isVertical = videoHeight > videoWidth;
-    setIsPortrait(isVertical);
-
-    if (autoRotationEnabled && isVertical && rotation === 0) {
-      setRotation(90);
-    }
-  }, [videoRef, enabled, autoRotationEnabled, rotation]);
+    setIsPortrait(videoHeight > videoWidth);
+  }, [videoRef, enabled]);
 
   // 當影片載入後偵測方向
   useEffect(() => {
@@ -57,21 +52,41 @@ export function useVideoRotation({
     };
   }, [videoRef, enabled, detectVideoOrientation]);
 
-  // 手動切換旋轉角度
+  // 全螢幕切換時：進入全螢幕且影片是直立的 → 自動旋轉 270 度；退出 → 重置為 0
+  useEffect(() => {
+    const wasFullscreen = prevFullscreenRef.current;
+    prevFullscreenRef.current = isFullscreen;
+
+    if (!enabled) return;
+
+    if (isFullscreen && !wasFullscreen) {
+      // 進入全螢幕：如果影片是直立的，自動旋轉
+      const video = videoRef.current;
+      if (video) {
+        const { videoWidth, videoHeight } = video;
+        if (videoHeight > videoWidth) {
+          setRotation(270);
+        }
+      }
+    } else if (!isFullscreen && wasFullscreen) {
+      // 退出全螢幕：重置旋轉
+      setRotation(0);
+    }
+  }, [isFullscreen, enabled, videoRef]);
+
+  // 手動切換旋轉角度（反方向：0 → 270 → 180 → 90）
   const toggleRotation = useCallback(() => {
     setRotation((prev) => {
-      const angles: RotationAngle[] = [0, 90, 180, 270];
+      const angles: RotationAngle[] = [0, 270, 180, 90];
       const currentIndex = angles.indexOf(prev);
       const nextIndex = (currentIndex + 1) % angles.length;
       return angles[nextIndex];
     });
-    setAutoRotationEnabled(false);
   }, []);
 
   // 重置旋轉
   const resetRotation = useCallback(() => {
     setRotation(0);
-    setAutoRotationEnabled(true);
   }, []);
 
   // 計算影片旋轉的 CSS transform
@@ -100,7 +115,7 @@ export function useVideoRotation({
 
     // 策略：使用 absolute 定位 + 交換尺寸 + 旋轉
     // 元素設為 containerHeight(寬) × containerWidth(高)，居中放置
-    // 旋轉 90 度後視覺上恰好是 containerWidth × containerHeight
+    // 旋轉後視覺上恰好是 containerWidth × containerHeight
     return {
       position: 'absolute' as const,
       top: '50%',
@@ -120,10 +135,8 @@ export function useVideoRotation({
   return {
     rotation,
     isPortrait,
-    autoRotationEnabled,
     toggleRotation,
     resetRotation,
-    setAutoRotationEnabled,
     getContainerStyle: getVideoTransformStyle,
     getVideoStyle,
   };
