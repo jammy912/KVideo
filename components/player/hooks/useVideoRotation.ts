@@ -127,10 +127,13 @@ export function useVideoRotation({
     };
   }, [rotation, enabled, containerRef, isFullscreen, videoDimensions]);
 
-  // 不需要額外的影片樣式了
+  // 旋轉 90/270 度時，影片用 object-cover 填滿整個螢幕（無黑邊）
   const getVideoStyle = useCallback((): React.CSSProperties => {
-    return {};
-  }, []);
+    if (!enabled || rotation === 0) return {};
+    const isRotated = rotation === 90 || rotation === 270;
+    if (!isRotated) return {};
+    return { objectFit: 'cover' };
+  }, [rotation, enabled]);
 
   return {
     rotation,
