@@ -49,6 +49,7 @@ export function useDesktopPlayerState() {
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [showToast, setShowToast] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [videoRotation, setVideoRotation] = useState<0 | 90 | 180 | 270>(0);
 
     const refs = useMemo(() => ({
         videoRef,
@@ -91,14 +92,15 @@ export function useDesktopPlayerState() {
         showVolumeBar,
         toastMessage,
         showToast,
-        showMoreMenu
+        showMoreMenu,
+        videoRotation
     }), [
         isPlaying, currentTime, duration, volume, isMuted, isFullscreen,
         showControls, isLoading, playbackRate, showSpeedMenu, isPiPSupported,
         isAirPlaySupported, isCastAvailable, isCasting, skipForwardAmount,
         skipBackwardAmount, showSkipForwardIndicator, showSkipBackwardIndicator,
         isSkipForwardAnimatingOut, isSkipBackwardAnimatingOut, showVolumeBar,
-        toastMessage, showToast, showMoreMenu
+        toastMessage, showToast, showMoreMenu, videoRotation
     ]);
 
     const actions = useMemo(() => ({
@@ -125,7 +127,8 @@ export function useDesktopPlayerState() {
         setShowVolumeBar,
         setToastMessage,
         setShowToast,
-        setShowMoreMenu
+        setShowMoreMenu,
+        setVideoRotation
     }), []); // All setters from useState are stable
 
     return { refs, data, actions };

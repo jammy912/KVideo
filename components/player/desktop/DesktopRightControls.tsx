@@ -1,7 +1,6 @@
 import React from 'react';
 import { Icons } from '@/components/ui/Icon';
-
-
+import { useVideoRotation } from '../hooks/useVideoRotation';
 
 interface DesktopRightControlsProps {
     isFullscreen: boolean;
@@ -13,6 +12,7 @@ interface DesktopRightControlsProps {
     onTogglePictureInPicture: () => void;
     onShowAirPlayMenu: () => void;
     onShowCastMenu: () => void;
+    videoRotation?: ReturnType<typeof useVideoRotation>;
 }
 
 export function DesktopRightControls({
@@ -24,7 +24,8 @@ export function DesktopRightControls({
     onToggleFullscreen,
     onTogglePictureInPicture,
     onShowAirPlayMenu,
-    onShowCastMenu
+    onShowCastMenu,
+    videoRotation
 }: DesktopRightControlsProps) {
     return (
         <div className="relative z-50 flex items-center gap-3">
@@ -66,6 +67,20 @@ export function DesktopRightControls({
                         title="投屏"
                     >
                         <Icons.Cast size={20} />
+                    </button>
+                )
+            }
+
+            {/* Video Rotation - Only show on mobile/tablet */}
+            {
+                videoRotation && (
+                    <button
+                        onClick={videoRotation.toggleRotation}
+                        className="btn-icon"
+                        aria-label="旋轉影片"
+                        title={`旋轉影片 (${videoRotation.rotation}°)`}
+                    >
+                        <Icons.RefreshCw size={20} style={{ transform: `rotate(${videoRotation.rotation}deg)` }} />
                     </button>
                 )
             }

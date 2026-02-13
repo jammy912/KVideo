@@ -2,6 +2,7 @@ import React from 'react';
 import { DesktopControls } from './DesktopControls';
 import { useDesktopPlayerState } from '../hooks/useDesktopPlayerState';
 import { useDesktopPlayerLogic } from '../hooks/useDesktopPlayerLogic';
+import { useVideoRotation } from '../hooks/useVideoRotation';
 
 interface DesktopControlsWrapperProps {
     src: string;
@@ -9,9 +10,10 @@ interface DesktopControlsWrapperProps {
     actions: ReturnType<typeof useDesktopPlayerState>['actions'];
     logic: ReturnType<typeof useDesktopPlayerLogic>;
     refs: ReturnType<typeof useDesktopPlayerState>['refs'];
+    videoRotation?: ReturnType<typeof useVideoRotation>;
 }
 
-export function DesktopControlsWrapper({ src, data, actions, logic, refs }: DesktopControlsWrapperProps) {
+export function DesktopControlsWrapper({ src, data, actions, logic, refs, videoRotation }: DesktopControlsWrapperProps) {
     const {
         isPlaying,
         currentTime,
@@ -76,6 +78,7 @@ export function DesktopControlsWrapper({ src, data, actions, logic, refs }: Desk
             onProgressMouseDown={handleProgressMouseDown}
             onProgressTouchStart={handleProgressTouchStart}
             formatTime={formatTime}
+            videoRotation={videoRotation}
         />
     );
 }

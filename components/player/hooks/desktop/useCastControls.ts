@@ -29,6 +29,7 @@ export function useCastControls({
         // Function to initialize Cast
         const initializeCastApi = () => {
             if (!window.cast || !window.cast.framework) return;
+            if (!window.chrome?.cast?.media) return; // Add safety check
 
             const castContext = window.cast.framework.CastContext.getInstance();
             castContextRef.current = castContext;

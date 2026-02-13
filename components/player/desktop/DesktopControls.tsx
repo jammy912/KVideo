@@ -2,6 +2,7 @@ import React from 'react';
 import { DesktopProgressBar } from './DesktopProgressBar';
 import { DesktopLeftControls } from './DesktopLeftControls';
 import { DesktopRightControls } from './DesktopRightControls';
+import { useVideoRotation } from '../hooks/useVideoRotation';
 
 interface DesktopControlsProps {
     showControls: boolean;
@@ -32,6 +33,7 @@ interface DesktopControlsProps {
     onProgressMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
     onProgressTouchStart: (e: React.TouchEvent<HTMLDivElement>) => void;
     formatTime: (seconds: number) => string;
+    videoRotation?: ReturnType<typeof useVideoRotation>;
 }
 
 export function DesktopControls(props: DesktopControlsProps) {

@@ -6,10 +6,11 @@ import { useDesktopPlayerLogic } from './hooks/useDesktopPlayerLogic';
 import { useHlsPlayer } from './hooks/useHlsPlayer';
 import { useAutoSkip } from './hooks/useAutoSkip';
 import { useStallDetection } from './hooks/useStallDetection';
+import { useVideoRotation } from './hooks/useVideoRotation';
 import { DesktopControlsWrapper } from './desktop/DesktopControlsWrapper';
 import { DesktopOverlayWrapper } from './desktop/DesktopOverlayWrapper';
 import { usePlayerSettings } from './hooks/usePlayerSettings';
-import { useIsIOS } from '@/lib/hooks/mobile/useDeviceDetection';
+import { useIsIOS, useIsMobile } from '@/lib/hooks/mobile/useDeviceDetection';
 import './web-fullscreen.css';
 
 interface DesktopVideoPlayerProps {
@@ -41,6 +42,7 @@ export function DesktopVideoPlayer({
   const { refs, data, actions } = useDesktopPlayerState();
   const { fullscreenType: settingsFullscreenType } = usePlayerSettings();
   const isIOS = useIsIOS();
+  const isMobile = useIsMobile();
 
   // State to track if device is in landscape mode
   const [isLandscape, setIsLandscape] = React.useState(true);
@@ -67,6 +69,13 @@ export function DesktopVideoPlayer({
 
   // Check if we need to force landscape (iOS + Fullscreen + Portrait)
   const shouldForceLandscape = data.isFullscreen && fullscreenType === 'window' && isIOS && !isLandscape;
+
+  // Initialize video rotation hook (only enabled on mobile/tablet)
+  const videoRotation = useVideoRotation({
+    videoRef: refs.videoRef,
+    isFullscreen: data.isFullscreen,
+    enabled: isMobile
+  });
 
   // Initialize HLS Player
   useHlsPlayer({
@@ -143,6 +152,10 @@ export function DesktopVideoPlayer({
     handleVideoError,
   } = logic;
 
+  // Apply video rotation styles
+  const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};
+  const videoElementStyle = isMobile ? videoRotation.getVideoStyle() : {};
+
   return (
     <div
       ref={containerRef}
@@ -154,30 +167,40 @@ export function DesktopVideoPlayer({
       {/* Clipping Wrapper for video and overlays - Restores the 'Liquid Glass' rounded look */}
       <div className={`absolute inset-0 overflow-hidden pointer-events-none ${data.isFullscreen && fullscreenType === 'window' ? 'rounded-0' : 'rounded-[var(--radius-2xl)]'
         }`}>
-        <div className="absolute inset-0 pointer-events-auto">
-          {/* Video Element */}
-          <video
-            ref={videoRef}
-            className="w-full h-full object-contain"
-            poster={poster}
-            x-webkit-airplay="allow"
-            playsInline={true} // Crucial for iOS custom fullscreen to work without native player taking over
-            controls={false} // Explicitly disable native controls
-            onPlay={handlePlay}
-            onPause={handlePause}
-            onTimeUpdate={handleTimeUpdateEvent}
-            onLoadedMetadata={handleLoadedMetadata}
-            onError={handleVideoError}
-            onWaiting={() => setIsLoading(true)}
-            onCanPlay={() => setIsLoading(false)}
-            onClick={(e) => {
-              // Prevent native behavior on iOS
-              // e.preventDefault(); 
-              // React synthetic event doesn't always stop native video toggle on iOS, but good practice
-              togglePlay();
+        <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
+          {/* Video Rotation Wrapper */}
+          <div
+            style={{
+              ...videoContainerStyle,
+              transition: 'transform 0.3s ease-in-out',
             }}
-            {...({ 'webkit-playsinline': 'true' } as any)} // Legacy iOS support
-          />
+            className="w-full h-full"
+          >
+            {/* Video Element */}
+            <video
+              ref={videoRef}
+              className="w-full h-full object-contain"
+              style={videoElementStyle}
+              poster={poster}
+              x-webkit-airplay="allow"
+              playsInline={true} // Crucial for iOS custom fullscreen to work without native player taking over
+              controls={false} // Explicitly disable native controls
+              onPlay={handlePlay}
+              onPause={handlePause}
+              onTimeUpdate={handleTimeUpdateEvent}
+              onLoadedMetadata={handleLoadedMetadata}
+              onError={handleVideoError}
+              onWaiting={() => setIsLoading(true)}
+              onCanPlay={() => setIsLoading(false)}
+              onClick={(e) => {
+                // Prevent native behavior on iOS
+                // e.preventDefault();
+                // React synthetic event doesn't always stop native video toggle on iOS, but good practice
+                togglePlay();
+              }}
+              {...({ 'webkit-playsinline': 'true' } as any)} // Legacy iOS support
+            />
+          </div>
 
           <DesktopOverlayWrapper
             data={data}
@@ -226,6 +249,7 @@ export function DesktopVideoPlayer({
             actions={actions}
             logic={logic}
             refs={refs}
+            videoRotation={isMobile ? videoRotation : undefined}
           />
         </div>
       </div>
