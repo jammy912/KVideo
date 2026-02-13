@@ -46,9 +46,9 @@ export function DesktopRightControls({
                 )
             }
 
-            {/* AirPlay - Hide on mobile */}
+            {/* AirPlay */}
             {
-                isAirPlaySupported && !isMobile && (
+                isAirPlaySupported && (
                     <button
                         onClick={onShowAirPlayMenu}
                         className="btn-icon"

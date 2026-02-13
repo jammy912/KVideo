@@ -83,49 +83,46 @@ export function useVideoRotation({
 
     const isRotated = rotation === 90 || rotation === 270;
 
-    const baseStyle: React.CSSProperties = {
-      transform: `rotate(${rotation}deg)`,
-    };
-
     // 當旋轉 90 或 270 度時，需要調整寬高和縮放
     if (isRotated) {
       const video = videoRef.current;
-      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-        // 計算縮放比例，讓旋轉後的影片填滿螢幕
-        const aspectRatio = video.videoWidth / video.videoHeight;
 
-        if (isFullscreen) {
-          // 全螢幕時，交換寬高使影片填滿螢幕
-          return {
-            ...baseStyle,
-            width: '100vh',
-            height: '100vw',
-            maxWidth: '100vh',
-            maxHeight: '100vw',
-          };
-        } else {
-          // 非全螢幕時，計算縮放以填滿容器
-          // 旋轉 90 度後，影片的寬變成高，高變成寬
-          // 需要縮放讓影片填滿父容器
-          const scale = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
+      if (isFullscreen) {
+        // 全螢幕時，交換寬高使影片填滿螢幕
+        return {
+          transform: `rotate(${rotation}deg)`,
+          width: '100vh',
+          height: '100vw',
+          maxWidth: '100vh',
+          maxHeight: '100vw',
+        };
+      } else {
+        // 非全螢幕時，需要放大影片以填滿容器
+        // 因為旋轉後，直立影片（高>寬）的高度會變成寬度
+        // 我們需要根據容器的寬高比來計算適當的縮放
+        let scale = 1;
 
-          return {
-            transform: `rotate(${rotation}deg) scale(${scale})`,
-            width: '100%',
-            height: '100%',
-          };
+        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+          // 直立影片旋轉 90 度後，原本的高會成為新的寬
+          // videoHeight / videoWidth 就是旋轉後需要的縮放比例
+          const videoAspect = video.videoHeight / video.videoWidth;
+
+          // 假設容器是 16:9 的比例（手機橫向）
+          // 我們需要讓旋轉後的影片填滿這個容器
+          scale = videoAspect;
         }
-      }
 
-      // 如果無法取得影片尺寸，使用預設縮放
-      return {
-        ...baseStyle,
-        width: '100%',
-        height: '100%',
-      };
+        return {
+          transform: `rotate(${rotation}deg) scale(${scale})`,
+          width: '100%',
+          height: '100%',
+        };
+      }
     }
 
-    return baseStyle;
+    return {
+      transform: `rotate(${rotation}deg)`,
+    };
   }, [rotation, isFullscreen, enabled, videoRef]);
 
   // 計算影片元素樣式
@@ -134,8 +131,11 @@ export function useVideoRotation({
       return {};
     }
 
+    const isRotated = rotation === 90 || rotation === 270;
+
+    // 旋轉後使用 cover 讓影片填滿容器
     return {
-      objectFit: 'contain' as const,
+      objectFit: isRotated ? 'cover' : 'contain',
     };
   }, [rotation, enabled]);
 
