@@ -85,8 +85,6 @@ export function useVideoRotation({
 
     // 當旋轉 90 或 270 度時，需要調整寬高和縮放
     if (isRotated) {
-      const video = videoRef.current;
-
       if (isFullscreen) {
         // 全螢幕時，交換寬高使影片填滿螢幕
         return {
@@ -97,19 +95,21 @@ export function useVideoRotation({
           maxHeight: '100vw',
         };
       } else {
-        // 非全螢幕時，需要放大影片以填滿容器
-        // 因為旋轉後，直立影片（高>寬）的高度會變成寬度
-        // 我們需要根據容器的寬高比來計算適當的縮放
+        // 非全螢幕時，計算適當的縮放比例
+        // 直立影片（9:16）旋轉 90 度後會變成（16:9）
+        // 但容器可能是 16:9，所以需要放大
+        const video = videoRef.current;
         let scale = 1;
 
         if (video && video.videoWidth > 0 && video.videoHeight > 0) {
-          // 直立影片旋轉 90 度後，原本的高會成為新的寬
-          // videoHeight / videoWidth 就是旋轉後需要的縮放比例
-          const videoAspect = video.videoHeight / video.videoWidth;
+          // 計算影片的長寬比
+          const videoWidth = video.videoWidth;
+          const videoHeight = video.videoHeight;
 
-          // 假設容器是 16:9 的比例（手機橫向）
-          // 我們需要讓旋轉後的影片填滿這個容器
-          scale = videoAspect;
+          // 旋轉後，寬高會互換
+          // 如果是直立影片 (9:16)，旋轉後變成 (16:9)
+          // 我們需要放大到原本高度的比例
+          scale = videoHeight / videoWidth;
         }
 
         return {
@@ -131,11 +131,9 @@ export function useVideoRotation({
       return {};
     }
 
-    const isRotated = rotation === 90 || rotation === 270;
-
-    // 旋轉後使用 cover 讓影片填滿容器
+    // 保持 contain 以避免裁切影片內容
     return {
-      objectFit: isRotated ? 'cover' : 'contain',
+      objectFit: 'contain',
     };
   }, [rotation, enabled]);
 
