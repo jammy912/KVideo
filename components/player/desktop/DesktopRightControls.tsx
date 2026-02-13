@@ -80,7 +80,9 @@ export function DesktopRightControls({
                         aria-label="旋轉影片"
                         title={`旋轉影片 (${videoRotation.rotation}°)`}
                     >
-                        <Icons.RefreshCw size={20} style={{ transform: `rotate(${videoRotation.rotation}deg)` }} />
+                        <div style={{ transform: `rotate(${videoRotation.rotation}deg)`, transition: 'transform 0.3s ease-in-out' }}>
+                            <Icons.RefreshCw size={20} />
+                        </div>
                     </button>
                 )
             }

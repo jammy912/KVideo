@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, RefObject } from 'react';
 export type RotationAngle = 0 | 90 | 180 | 270;
 
 interface UseVideoRotationOptions {
-  videoRef: RefObject<HTMLVideoElement>;
+  videoRef: RefObject<HTMLVideoElement | null>;
   isFullscreen: boolean;
   enabled?: boolean;
 }
