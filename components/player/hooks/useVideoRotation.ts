@@ -87,29 +87,46 @@ export function useVideoRotation({
       transform: `rotate(${rotation}deg)`,
     };
 
-    // 當旋轉 90 或 270 度時，需要調整寬高
+    // 當旋轉 90 或 270 度時，需要調整寬高和縮放
     if (isRotated) {
-      if (isFullscreen) {
-        // 全螢幕時，交換寬高使影片填滿螢幕
-        return {
-          ...baseStyle,
-          width: '100vh',
-          height: '100vw',
-          maxWidth: '100vh',
-          maxHeight: '100vw',
-        };
-      } else {
-        // 非全螢幕時，保持容器尺寸但旋轉內容
-        return {
-          ...baseStyle,
-          width: '100%',
-          height: '100%',
-        };
+      const video = videoRef.current;
+      if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+        // 計算縮放比例，讓旋轉後的影片填滿螢幕
+        const aspectRatio = video.videoWidth / video.videoHeight;
+
+        if (isFullscreen) {
+          // 全螢幕時，交換寬高使影片填滿螢幕
+          return {
+            ...baseStyle,
+            width: '100vh',
+            height: '100vw',
+            maxWidth: '100vh',
+            maxHeight: '100vw',
+          };
+        } else {
+          // 非全螢幕時，計算縮放以填滿容器
+          // 旋轉 90 度後，影片的寬變成高，高變成寬
+          // 需要縮放讓影片填滿父容器
+          const scale = aspectRatio > 1 ? aspectRatio : 1 / aspectRatio;
+
+          return {
+            transform: `rotate(${rotation}deg) scale(${scale})`,
+            width: '100%',
+            height: '100%',
+          };
+        }
       }
+
+      // 如果無法取得影片尺寸，使用預設縮放
+      return {
+        ...baseStyle,
+        width: '100%',
+        height: '100%',
+      };
     }
 
     return baseStyle;
-  }, [rotation, isFullscreen, enabled]);
+  }, [rotation, isFullscreen, enabled, videoRef]);
 
   // 計算影片元素樣式
   const getVideoStyle = useCallback((): React.CSSProperties => {
