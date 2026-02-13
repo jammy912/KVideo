@@ -73,6 +73,7 @@ export function DesktopVideoPlayer({
   // Initialize video rotation hook (only enabled on mobile/tablet)
   const videoRotation = useVideoRotation({
     videoRef: refs.videoRef,
+    containerRef: refs.containerRef,
     isFullscreen: data.isFullscreen,
     enabled: isMobile
   });
@@ -165,7 +166,9 @@ export function DesktopVideoPlayer({
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
       {/* Clipping Wrapper for video and overlays - Restores the 'Liquid Glass' rounded look */}
-      <div className={`absolute inset-0 overflow-hidden pointer-events-none ${data.isFullscreen && fullscreenType === 'window' ? 'rounded-0' : 'rounded-[var(--radius-2xl)]'
+      <div className={`absolute inset-0 pointer-events-none ${
+        isMobile && videoRotation.rotation !== 0 ? '' : 'overflow-hidden'
+        } ${data.isFullscreen && fullscreenType === 'window' ? 'rounded-0' : 'rounded-[var(--radius-2xl)]'
         }`}>
         <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
           {/* Video Rotation Wrapper */}
