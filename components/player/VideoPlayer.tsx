@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Card } from '@/components/ui/Card';
 import { useHistory } from '@/lib/store/history-store';
 import { settingsStore } from '@/lib/store/settings-store';
 import { CustomVideoPlayer } from './CustomVideoPlayer';
@@ -195,7 +194,7 @@ export function VideoPlayer({
   }
 
   return (
-    <Card hover={false} className="p-0 relative md:border md:shadow-[var(--shadow-md)] border-0 shadow-none rounded-none md:rounded-[var(--radius-2xl)] bg-black md:bg-[var(--glass-bg)]">
+    <div className="relative rounded-none md:rounded-[var(--radius-2xl)] md:border md:border-[var(--glass-border)] md:shadow-[var(--shadow-md)] bg-black md:bg-[var(--glass-bg)]">
       {/* Mode Indicator Badge - controlled by settings */}
       {showModeIndicator && (
         <div className="absolute top-3 right-3 z-30">
@@ -229,6 +228,6 @@ export function VideoPlayer({
           isReversed={isReversed}
         />
       )}
-    </Card>
+    </div>
   );
 }

@@ -166,9 +166,7 @@ export function DesktopVideoPlayer({
       onMouseLeave={() => isPlaying && setShowControls(false)}
     >
       {/* Clipping Wrapper for video and overlays - Restores the 'Liquid Glass' rounded look */}
-      <div className={`absolute inset-0 pointer-events-none ${
-        isMobile && videoRotation.rotation !== 0 ? '' : 'overflow-hidden'
-        } ${data.isFullscreen && fullscreenType === 'window' ? 'rounded-0' : 'rounded-none sm:rounded-[var(--radius-2xl)]'
+      <div className={`absolute inset-0 pointer-events-none overflow-hidden ${data.isFullscreen && fullscreenType === 'window' ? 'rounded-0' : 'rounded-none sm:rounded-[var(--radius-2xl)]'
         }`}>
         <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
           {/* Video Rotation Wrapper */}
@@ -177,7 +175,7 @@ export function DesktopVideoPlayer({
               ...videoContainerStyle,
               transition: 'transform 0.3s ease-in-out',
             }}
-            className="w-full h-full"
+            className={isMobile && videoRotation.rotation % 180 !== 0 ? '' : 'w-full h-full'}
           >
             {/* Video Element */}
             <video

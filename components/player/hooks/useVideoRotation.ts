@@ -89,8 +89,7 @@ export function useVideoRotation({
       };
     }
 
-    // 旋轉 90/270 度時，需要計算縮放
-    // 關鍵：旋轉後寬高互換，需要讓旋轉後的影片填滿容器的寬度
+    // 旋轉 90/270 度時，需要讓旋轉後的影片填滿容器
     const container = containerRef.current;
     if (!container) {
       return { transform: `rotate(${rotation}deg)` };
@@ -99,15 +98,16 @@ export function useVideoRotation({
     const containerWidth = container.clientWidth;
     const containerHeight = container.clientHeight;
 
-    // 旋轉 90 度後，容器的高度變成「可用寬度」，容器的寬度變成「可用高度」
-    // 我們要讓影片旋轉後填滿整個容器寬度
-    // scale 需要是 containerWidth / containerHeight
-    // 因為旋轉後原本的 height 軸變成了水平方向，
-    // 如果 containerHeight < containerWidth，放大比例 = containerWidth / containerHeight
-    const scale = containerWidth / containerHeight;
-
+    // 策略：使用 absolute 定位 + 交換尺寸 + 旋轉
+    // 元素設為 containerHeight(寬) × containerWidth(高)，居中放置
+    // 旋轉 90 度後視覺上恰好是 containerWidth × containerHeight
     return {
-      transform: `rotate(${rotation}deg) scale(${scale})`,
+      position: 'absolute' as const,
+      top: '50%',
+      left: '50%',
+      width: `${containerHeight}px`,
+      height: `${containerWidth}px`,
+      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
       transformOrigin: 'center center',
     };
   }, [rotation, enabled, containerRef, isFullscreen, videoDimensions]);
