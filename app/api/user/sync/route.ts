@@ -2,7 +2,6 @@ import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/server/auth';
 
-// 确保这行代码在整个文件中只出现一次
 export const runtime = 'edge';
 
 const redis = Redis.fromEnv();
@@ -10,17 +9,14 @@ const redis = Redis.fromEnv();
 export async function GET(request: NextRequest) {
   const session = await getServerSession(request);
   const profileId = session?.profileId;
-  
+
   if (!profileId) {
     return NextResponse.json({ error: 'Missing profileId' }, { status: 400 });
   }
 
   try {
     const data = await redis.get(`user:sync:${profileId}`);
-    return NextResponse.json({ 
-      success: true, 
-      data: data || { history: [], favorites: [] } 
-    });
+    return NextResponse.json({ success: true, data: data || null });
   } catch (error) {
     console.error('Redis Get Error:', error);
     return NextResponse.json({ error: 'Failed to fetch sync data' }, { status: 500 });
@@ -30,16 +26,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getServerSession(request);
   const profileId = session?.profileId;
-  
+
   if (!profileId) {
     return NextResponse.json({ error: 'Missing profileId' }, { status: 400 });
   }
 
   try {
     const body = await request.json();
-    const { history, favorites } = body;
+    const key = `user:sync:${profileId}`;
 
-    await redis.set(`user:sync:${profileId}`, { history, favorites });
+    const existing = (await redis.get(key)) as Record<string, unknown> | null;
+    const merged = { ...(existing || {}), ...body, updatedAt: Date.now() };
+
+    await redis.set(key, merged);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -8,6 +8,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { settingsStore } from '@/lib/store/settings-store';
+import { userSourcesStore } from '@/lib/store/user-sources-store';
 import { getProfileId } from '@/lib/store/auth-store';
 import { encryptPayload, decryptPayload, hasSyncKey } from '@/lib/utils/sync-crypto';
 
@@ -20,6 +21,57 @@ interface SyncPayload {
   blockedCategories?: unknown;
   sortBy?: unknown;
   locale?: unknown;
+  userSources?: unknown;
+  danmakuApis?: unknown;
+  activeDanmakuApiId?: unknown;
+}
+
+async function pushNow(): Promise<void> {
+  if (!getProfileId()) return;
+  if (!(await hasSyncKey())) return;
+
+  try {
+    const settings = settingsStore.getSettings();
+    const userState = userSourcesStore.getState();
+    const payload: SyncPayload = {
+      sources: settings.sources,
+      premiumSources: settings.premiumSources,
+      subscriptions: settings.subscriptions,
+      blockedCategories: settings.blockedCategories,
+      sortBy: settings.sortBy,
+      locale: settings.locale,
+      userSources: userState.sources,
+      danmakuApis: userState.danmakuApis,
+      activeDanmakuApiId: userState.activeDanmakuApiId,
+    };
+
+    const encrypted = await encryptPayload(JSON.stringify(payload));
+    if (!encrypted) return;
+
+    await fetch('/api/user/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ encrypted }),
+    });
+
+    const stored = localStorage.getItem('kvideo-settings');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      parsed._syncedAt = Date.now();
+      localStorage.setItem('kvideo-settings', JSON.stringify(parsed));
+    }
+  } catch {
+    // Silently fail — local storage is the primary source
+  }
+}
+
+// Module-level reference so non-hook callers (e.g. settings import) can flush.
+let flushPushRef: (() => Promise<void>) | null = null;
+
+export async function flushConfigSync(): Promise<void> {
+  if (flushPushRef) {
+    await flushPushRef();
+  }
 }
 
 export function useConfigSync() {
@@ -78,6 +130,20 @@ export function useConfigSync() {
 
           settingsStore.saveSettings(merged);
 
+          const userPatch: Parameters<typeof userSourcesStore.setState>[0] = {};
+          if (Array.isArray(serverData.userSources)) {
+            userPatch.sources = serverData.userSources as ReturnType<typeof userSourcesStore.getSources>;
+          }
+          if (Array.isArray(serverData.danmakuApis)) {
+            userPatch.danmakuApis = serverData.danmakuApis as ReturnType<typeof userSourcesStore.getDanmakuApis>;
+          }
+          if (typeof serverData.activeDanmakuApiId === 'string' || serverData.activeDanmakuApiId === null) {
+            userPatch.activeDanmakuApiId = serverData.activeDanmakuApiId;
+          }
+          if (Object.keys(userPatch).length > 0) {
+            userSourcesStore.setState(userPatch);
+          }
+
           const stored = localStorage.getItem('kvideo-settings');
           if (stored) {
             const parsed = JSON.parse(stored);
@@ -97,47 +163,26 @@ export function useConfigSync() {
   useEffect(() => {
     const push = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-
-      debounceRef.current = setTimeout(async () => {
-        if (!hasSession()) return;
-        if (!(await hasSyncKey())) return;
-
-        try {
-          const settings = settingsStore.getSettings();
-          const payload: SyncPayload = {
-            sources: settings.sources,
-            premiumSources: settings.premiumSources,
-            subscriptions: settings.subscriptions,
-            blockedCategories: settings.blockedCategories,
-            sortBy: settings.sortBy,
-            locale: settings.locale,
-          };
-
-          const encrypted = await encryptPayload(JSON.stringify(payload));
-          if (!encrypted) return;
-
-          await fetch('/api/user/config', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ encrypted }),
-          });
-
-          const stored = localStorage.getItem('kvideo-settings');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            parsed._syncedAt = Date.now();
-            localStorage.setItem('kvideo-settings', JSON.stringify(parsed));
-          }
-        } catch {
-          // Silently fail — local storage is the primary source
-        }
+      debounceRef.current = setTimeout(() => {
+        void pushNow();
       }, DEBOUNCE_MS);
     };
 
-    const unsubscribe = settingsStore.subscribe(push);
+    flushPushRef = async () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      await pushNow();
+    };
+
+    const unsubSettings = settingsStore.subscribe(push);
+    const unsubUserSources = userSourcesStore.subscribe(push);
     return () => {
-      unsubscribe();
+      unsubSettings();
+      unsubUserSources();
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      flushPushRef = null;
     };
   }, [hasSession]);
 }

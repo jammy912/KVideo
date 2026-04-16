@@ -16,6 +16,7 @@ import {
     parseSourcesFromJson,
     fetchSourcesFromUrl
 } from '@/lib/utils/source-import-utils';
+import { flushConfigSync } from '@/lib/hooks/useConfigSync';
 
 export function useSettingsPage() {
     const [sources, setSources] = useState<VideoSource[]>([]);
@@ -127,8 +128,8 @@ export function useSettingsPage() {
             setSortBy(settings.sortBy);
             setSubscriptions(settings.subscriptions || []);
 
-            // Reload to apply changes
-            setTimeout(() => window.location.reload(), 1000);
+            // Flush any pending debounced sync push before reload
+            flushConfigSync().finally(() => window.location.reload());
 
             return true;
         }
