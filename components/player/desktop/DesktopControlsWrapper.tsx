@@ -7,20 +7,21 @@ import { useVideoRotation } from '../hooks/useVideoRotation';
 interface DesktopControlsWrapperProps {
     src: string;
     data: ReturnType<typeof useDesktopPlayerState>['data'];
-    actions: ReturnType<typeof useDesktopPlayerState>['actions'];
     logic: ReturnType<typeof useDesktopPlayerLogic>;
     refs: ReturnType<typeof useDesktopPlayerState>['refs'];
     videoRotation?: ReturnType<typeof useVideoRotation>;
 }
 
-export function DesktopControlsWrapper({ src, data, actions, logic, refs, videoRotation }: DesktopControlsWrapperProps) {
+export function DesktopControlsWrapper({ src, data, logic, refs, videoRotation }: DesktopControlsWrapperProps) {
     const {
         isPlaying,
         currentTime,
         duration,
+        bufferedTime,
         volume,
         isMuted,
         isFullscreen,
+        fullscreenMode,
         showControls,
         showVolumeBar,
         isPiPSupported,
@@ -34,6 +35,8 @@ export function DesktopControlsWrapper({ src, data, actions, logic, refs, videoR
         handleVolumeChange,
         handleVolumeMouseDown,
         toggleFullscreen,
+        toggleNativeFullscreen,
+        toggleWindowFullscreen,
         togglePictureInPicture,
         showAirPlayMenu,
         showCastMenu,
@@ -56,9 +59,12 @@ export function DesktopControlsWrapper({ src, data, actions, logic, refs, videoR
             isPlaying={isPlaying}
             currentTime={currentTime}
             duration={duration}
+            bufferedTime={bufferedTime}
             volume={volume}
             isMuted={isMuted}
             isFullscreen={isFullscreen}
+            isNativeFullscreen={fullscreenMode === 'native'}
+            isWebFullscreen={fullscreenMode === 'window'}
             showVolumeBar={showVolumeBar}
             isPiPSupported={isPiPSupported}
             isAirPlaySupported={isAirPlaySupported}
@@ -71,6 +77,8 @@ export function DesktopControlsWrapper({ src, data, actions, logic, refs, videoR
             onVolumeChange={handleVolumeChange}
             onVolumeMouseDown={handleVolumeMouseDown}
             onToggleFullscreen={toggleFullscreen}
+            onToggleNativeFullscreen={toggleNativeFullscreen}
+            onToggleWebFullscreen={toggleWindowFullscreen}
             onTogglePictureInPicture={togglePictureInPicture}
             onShowAirPlayMenu={showAirPlayMenu}
             onShowCastMenu={showCastMenu}
