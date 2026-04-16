@@ -11,6 +11,7 @@ import {
   type Permission,
   type Role,
 } from '@/lib/auth/permissions';
+import { clearSyncKey } from '@/lib/utils/sync-crypto';
 
 export type { Permission, Role } from '@/lib/auth/permissions';
 
@@ -93,6 +94,7 @@ export function clearSession(): void {
   localStorage.removeItem('kvideo_search_cache');
   sessionStorage.removeItem('kvideo-unlocked');
   localStorage.removeItem('kvideo-unlocked');
+  void clearSyncKey();
   notifySessionChange();
 }
 

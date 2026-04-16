@@ -6,6 +6,7 @@ import { clearSession, getSession, setSession, type AuthSession } from '@/lib/st
 import { useSubscriptionSync } from '@/lib/hooks/useSubscriptionSync';
 import { hasStoredAppSetting, settingsStore } from '@/lib/store/settings-store';
 import { useIPTVStore } from '@/lib/store/iptv-store';
+import { deriveAndStoreSyncKey } from '@/lib/utils/sync-crypto';
 
 type LoginMode = 'none' | 'legacy_password' | 'managed';
 
@@ -205,6 +206,7 @@ export function PasswordGate({
 
       if (data.valid && data.session) {
         setSession(toAuthSession(data.session), data.persistSession ?? persistSession);
+        await deriveAndStoreSyncKey(password);
         window.location.reload();
         return;
       }
