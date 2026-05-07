@@ -72,6 +72,9 @@ interface DesktopVideoPlayerProps {
   isPremium?: boolean;
   // Resolution callback
   onResolutionDetected?: (info: import('./hooks/useVideoResolution').VideoResolutionInfo) => void;
+  // Persisted rotation (mobile-only)
+  initialRotation?: 0 | 90 | 180 | 270;
+  onRotationChange?: (rotation: 0 | 90 | 180 | 270) => void;
 }
 
 export function DesktopVideoPlayer({
@@ -89,6 +92,8 @@ export function DesktopVideoPlayer({
   episodeName = '',
   isPremium = false,
   onResolutionDetected,
+  initialRotation = 0,
+  onRotationChange,
 }: DesktopVideoPlayerProps) {
   const { refs, data, actions } = useDesktopPlayerState();
   const { fullscreenType: settingsFullscreenType } = usePlayerSettings(isPremium);
@@ -214,8 +219,51 @@ export function DesktopVideoPlayer({
     videoRef: refs.videoRef,
     containerRef: refs.containerRef,
     isFullscreen: data.isFullscreen,
-    enabled: isMobile
+    enabled: isMobile,
+    initialRotation
   });
+
+  // Persist rotation back to history when user changes it (mobile only).
+  const lastReportedRotationRef = React.useRef(initialRotation);
+  React.useEffect(() => {
+    if (!isMobile) return;
+    if (videoRotation.rotation === lastReportedRotationRef.current) return;
+    lastReportedRotationRef.current = videoRotation.rotation;
+    onRotationChange?.(videoRotation.rotation);
+  }, [videoRotation.rotation, isMobile, onRotationChange]);
+
+  // Sync UI fullscreen state with browser fullscreen state on mount.
+  // HistoryItem can call requestFullscreen() before SPA navigation, so
+  // when the player mounts we may already be in native fullscreen
+  // without ever calling enter*Fullscreen() ourselves. Reflect that
+  // in the state machine so controls render correctly.
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const fsEl =
+      document.fullscreenElement ||
+      (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+    if (fsEl && data.fullscreenMode === 'none') {
+      actions.setFullscreenMode('native');
+      actions.setIsFullscreen(true);
+    }
+    // Listen for changes so we stay in sync if browser exits fullscreen.
+    const handleFsChange = () => {
+      const el =
+        document.fullscreenElement ||
+        (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+      if (!el) {
+        actions.setFullscreenMode('none');
+        actions.setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Initialize HLS Player
   useHlsPlayer({

@@ -25,6 +25,8 @@ interface VideoPlayerProps {
   externalTimeRef?: React.MutableRefObject<number>;
   // Resolution callback
   onResolutionDetected?: (info: import('./hooks/useVideoResolution').VideoResolutionInfo) => void;
+  initialRotation?: 0 | 90 | 180 | 270;
+  onRotationChange?: (rotation: 0 | 90 | 180 | 270) => void;
 }
 
 export function VideoPlayer({
@@ -40,6 +42,8 @@ export function VideoPlayer({
   episodeName,
   externalTimeRef,
   onResolutionDetected,
+  initialRotation,
+  onRotationChange,
 }: VideoPlayerProps) {
   const [videoError, setVideoError] = useState<string>('');
   const [useProxy, setUseProxy] = useState(false);
@@ -216,6 +220,8 @@ export function VideoPlayer({
           episodeName={episodeName}
           isPremium={isPremium}
           onResolutionDetected={onResolutionDetected}
+          initialRotation={initialRotation}
+          onRotationChange={onRotationChange}
         />
       )}
     </div>

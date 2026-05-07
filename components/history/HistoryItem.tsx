@@ -4,6 +4,7 @@
  */
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/ui/Icon';
 import { formatTime, formatDate } from '@/lib/utils/format-utils';
 import { PosterImage } from './PosterImage';
@@ -19,6 +20,8 @@ interface HistoryItemProps {
 }
 
 export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemProps) {
+  const router = useRouter();
+
   const getVideoUrl = (): string => {
     const params = new URLSearchParams({
       id: item.videoId.toString(),
@@ -52,6 +55,28 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       window.open(getVideoUrl(), '_blank');
       return;
     }
+
+    // Try to enter native fullscreen synchronously while we still have a
+    // user gesture. Then navigate via SPA router so the fullscreen state
+    // survives (a hard navigation would force-exit fullscreen).
+    event.preventDefault();
+    const el = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>;
+    };
+    const req =
+      el.requestFullscreen?.bind(el) ||
+      el.webkitRequestFullscreen?.bind(el);
+    if (req) {
+      try {
+        const p = req();
+        if (p && typeof p.then === 'function') {
+          p.catch(() => { /* ignore — browser may refuse */ });
+        }
+      } catch {
+        // ignore
+      }
+    }
+    router.push(getVideoUrl());
   };
 
   const progress = (item.playbackPosition / item.duration) * 100;
@@ -63,14 +88,8 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
     <div className="group bg-[color-mix(in_srgb,var(--glass-bg)_50%,transparent)] rounded-[var(--radius-2xl)] p-3 hover:bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)] transition-all border border-transparent hover:border-[var(--glass-border)]">
       <a
         href={getVideoUrl()}
-        onClick={(e) => {
-          e.preventDefault();
-          handleClick(e as any);
-          if (!e.ctrlKey && !e.metaKey) {
-            window.location.href = getVideoUrl();
-          }
-        }}
-        onAuxClick={(e) => handleClick(e as any)}
+        onClick={(e) => handleClick(e as React.MouseEvent)}
+        onAuxClick={(e) => handleClick(e as unknown as React.MouseEvent)}
         className="block"
       >
         <div className="flex gap-3">

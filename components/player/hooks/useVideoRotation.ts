@@ -7,15 +7,17 @@ interface UseVideoRotationOptions {
   containerRef: RefObject<HTMLDivElement | null>;
   isFullscreen: boolean;
   enabled?: boolean;
+  initialRotation?: RotationAngle;
 }
 
 export function useVideoRotation({
   videoRef,
   containerRef,
   isFullscreen,
-  enabled = true
+  enabled = true,
+  initialRotation = 0
 }: UseVideoRotationOptions) {
-  const [rotation, setRotation] = useState<RotationAngle>(0);
+  const [rotation, setRotation] = useState<RotationAngle>(initialRotation);
   const [isPortrait, setIsPortrait] = useState(false);
   // 記住影片尺寸作為 state，讓樣式能正確更新
   const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });

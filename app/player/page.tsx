@@ -36,7 +36,7 @@ function PlayerContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isPremium = searchParams.get('premium') === '1';
-  const { addToHistory } = useHistory(isPremium);
+  const { addToHistory, viewingHistory, updateRotation } = useHistory(isPremium);
 
   const videoId = searchParams.get('id');
   const source = searchParams.get('source');
@@ -46,6 +46,20 @@ function PlayerContent() {
   const groupedSourcesParam = searchParams.get('groupedSources');
   const gsKey = searchParams.get('gs');
   const missingRequiredParams = !videoId || !source;
+
+  // Look up persisted rotation from history (matched by normalized title).
+  const historyRotation = useMemo<0 | 90 | 180 | 270>(() => {
+    if (!title) return 0;
+    const normalized = `title:${title.toLowerCase().trim()}`;
+    const entry = viewingHistory.find((h) => h.showIdentifier === normalized);
+    return entry?.rotation ?? 0;
+  }, [title, viewingHistory]);
+
+  const handleRotationChange = useCallback((rotation: 0 | 90 | 180 | 270) => {
+    if (!title) return;
+    const normalized = `title:${title.toLowerCase().trim()}`;
+    updateRotation(normalized, rotation);
+  }, [title, updateRotation]);
 
   // Track settings - use mode-specific store
   const modeStore = isPremium ? premiumModeSettingsStore : settingsStore;
@@ -457,6 +471,8 @@ function PlayerContent() {
                   episodeName={videoData?.episodes?.[currentEpisode]?.name || ''}
                   externalTimeRef={playerTimeRef}
                   onResolutionDetected={handleResolutionDetected}
+                  initialRotation={historyRotation}
+                  onRotationChange={handleRotationChange}
                 />
               </div>
               <div className="hidden lg:block">
