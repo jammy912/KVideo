@@ -25,6 +25,7 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       source: item.source,
       title: item.title,
       episode: item.episodeIndex.toString(),
+      autoFs: '1',
     });
     // Store sourceMap in sessionStorage to avoid long URLs
     if (item.sourceMap && Object.keys(item.sourceMap).length > 1) {
