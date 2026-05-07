@@ -81,6 +81,13 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       requestFs(document.body) ?? requestFs(document.documentElement);
     fsPromise?.catch(() => { /* ignore — fall through and let user tap */ });
 
+    // iOS Safari has no Element.requestFullscreen, but
+    // HTMLVideoElement.webkitEnterFullscreen() works once the video has
+    // mounted and started. Drop a flag for the player to pick up.
+    try {
+      sessionStorage.setItem('kvideo-pending-ios-fullscreen', '1');
+    } catch { /* ignore */ }
+
     router.push(getVideoUrl());
   };
 

@@ -232,6 +232,34 @@ export function DesktopVideoPlayer({
     onRotationChange?.(videoRotation.rotation);
   }, [videoRotation.rotation, isMobile, onRotationChange]);
 
+  // iOS path: trigger webkitEnterFullscreen() once playback is healthy.
+  // Set by HistoryItem before SPA nav. iOS Safari has no requestFullscreen
+  // on elements other than <video>, so this is the only way to auto-enter
+  // fullscreen on iPhone.
+  const iosFsAppliedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (iosFsAppliedRef.current) return;
+    if (!isIOS) return;
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('kvideo-pending-ios-fullscreen') !== '1') return;
+    if (data.duration <= 0) return;
+    if (!data.isPlaying) return;
+    if (data.currentTime <= (initialTime || 0) + 0.3) return;
+
+    const v = refs.videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+    }) | null;
+    if (!v || typeof v.webkitEnterFullscreen !== 'function') return;
+
+    iosFsAppliedRef.current = true;
+    sessionStorage.removeItem('kvideo-pending-ios-fullscreen');
+    try {
+      v.webkitEnterFullscreen();
+    } catch {
+      // Browser refused — user can tap the fullscreen button.
+    }
+  }, [isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef]);
+
   // Sync UI fullscreen state with browser fullscreen state on mount.
   // HistoryItem can call requestFullscreen() before SPA navigation, so
   // when the player mounts we may already be in native fullscreen
