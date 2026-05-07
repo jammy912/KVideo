@@ -25,6 +25,19 @@ export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean
   const { viewingHistory, removeFromHistory, clearHistory } = useHistory(isPremium);
   const sidebarRef = useRef<HTMLElement>(null);
   const cleanupFocusTrapRef = useRef<(() => void) | null>(null);
+  const autoOpenedRef = useRef(false);
+
+  // Auto-open once after login if user has watch history.
+  // Flag is set by PasswordGate on successful login; cleared after first use.
+  useEffect(() => {
+    if (autoOpenedRef.current) return;
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('kvideo-just-logged-in') !== '1') return;
+    if (viewingHistory.length === 0) return;
+    autoOpenedRef.current = true;
+    sessionStorage.removeItem('kvideo-just-logged-in');
+    setIsOpen(true);
+  }, [viewingHistory.length]);
   const {
     floatingStyle,
     onPointerDown,

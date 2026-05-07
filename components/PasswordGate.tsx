@@ -207,6 +207,7 @@ export function PasswordGate({
       if (data.valid && data.session) {
         setSession(toAuthSession(data.session), data.persistSession ?? persistSession);
         await deriveAndStoreSyncKey(password);
+        sessionStorage.setItem('kvideo-just-logged-in', '1');
         window.location.reload();
         return;
       }
