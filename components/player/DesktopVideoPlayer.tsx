@@ -317,11 +317,9 @@ export function DesktopVideoPlayer({
   } = logic;
 
   // Auto-enter web fullscreen once when opened from history.
-  // We bypass logic.toggleWindowFullscreen() because that path calls
-  // screen.orientation.lock(), which (a) requires a user gesture on Android
-  // and (b) triggers a layout reflow that can desync hls.js / play state
-  // during initial buffering. Web fullscreen here is purely a CSS state
-  // change, so flipping the mode flag directly is enough.
+  // Wait until playback is actually running, then defer one tick so the
+  // orientation-lock side effects don't race with the play() call.
+  // After switching, kick the video again if the layout shift paused it.
   const autoFullscreenAppliedRef = React.useRef(false);
   React.useEffect(() => {
     if (!autoFullscreen) return;
@@ -330,9 +328,17 @@ export function DesktopVideoPlayer({
     if (data.duration <= 0) return;
     if (!data.isPlaying) return;
     autoFullscreenAppliedRef.current = true;
-    actions.setFullscreenMode('window');
-    actions.setIsFullscreen(true);
-  }, [autoFullscreen, data.duration, data.fullscreenMode, data.isPlaying, actions]);
+
+    const timer = window.setTimeout(async () => {
+      await logic.toggleWindowFullscreen();
+      const v = refs.videoRef.current;
+      if (v && v.paused) {
+        try { await v.play(); } catch { /* ignore */ }
+      }
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [autoFullscreen, data.duration, data.fullscreenMode, data.isPlaying, logic, refs.videoRef]);
 
   // Apply video rotation styles
   const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};
