@@ -32,7 +32,6 @@ interface HistoryActions {
   removeFromHistory: (showIdentifier: string) => void;
   clearHistory: () => void;
   importHistory: (history: VideoHistoryItem[]) => void;
-  updateRotation: (showIdentifier: string, rotation: 0 | 90 | 180 | 270) => void;
 }
 
 interface HistoryStore extends HistoryState, HistoryActions { }
@@ -206,16 +205,6 @@ const createHistoryStore = (name: string) =>
 
         importHistory: (history) => {
           set({ viewingHistory: history });
-        },
-
-        updateRotation: (showIdentifier, rotation) => {
-          set((state) => ({
-            viewingHistory: state.viewingHistory.map((item) =>
-              item.showIdentifier === showIdentifier
-                ? { ...item, rotation }
-                : item
-            ),
-          }));
         },
       }),
       {

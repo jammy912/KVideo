@@ -72,11 +72,6 @@ interface DesktopVideoPlayerProps {
   isPremium?: boolean;
   // Resolution callback
   onResolutionDetected?: (info: import('./hooks/useVideoResolution').VideoResolutionInfo) => void;
-  // Persisted rotation (from history, mobile-only)
-  initialRotation?: 0 | 90 | 180 | 270;
-  onRotationChange?: (rotation: 0 | 90 | 180 | 270) => void;
-  // Auto-enter web fullscreen on first load (used when opened from history)
-  autoFullscreen?: boolean;
 }
 
 export function DesktopVideoPlayer({
@@ -94,9 +89,6 @@ export function DesktopVideoPlayer({
   episodeName = '',
   isPremium = false,
   onResolutionDetected,
-  initialRotation = 0,
-  onRotationChange,
-  autoFullscreen = false,
 }: DesktopVideoPlayerProps) {
   const { refs, data, actions } = useDesktopPlayerState();
   const { fullscreenType: settingsFullscreenType } = usePlayerSettings(isPremium);
@@ -222,18 +214,8 @@ export function DesktopVideoPlayer({
     videoRef: refs.videoRef,
     containerRef: refs.containerRef,
     isFullscreen: data.isFullscreen,
-    enabled: isMobile,
-    initialRotation
+    enabled: isMobile
   });
-
-  // Notify parent when user changes rotation (so it can be persisted to history)
-  const lastReportedRotationRef = React.useRef(initialRotation);
-  React.useEffect(() => {
-    if (!isMobile) return;
-    if (videoRotation.rotation === lastReportedRotationRef.current) return;
-    lastReportedRotationRef.current = videoRotation.rotation;
-    onRotationChange?.(videoRotation.rotation);
-  }, [videoRotation.rotation, isMobile, onRotationChange]);
 
   // Initialize HLS Player
   useHlsPlayer({
@@ -315,17 +297,6 @@ export function DesktopVideoPlayer({
     handleProgressEvent,
     handleVideoError,
   } = logic;
-
-  // Auto-enter web fullscreen once when opened from history
-  const autoFullscreenAppliedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (!autoFullscreen) return;
-    if (autoFullscreenAppliedRef.current) return;
-    if (data.fullscreenMode !== 'none') return;
-    if (data.duration <= 0) return;
-    autoFullscreenAppliedRef.current = true;
-    void logic.toggleWindowFullscreen();
-  }, [autoFullscreen, data.duration, data.fullscreenMode, logic]);
 
   // Apply video rotation styles
   const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};

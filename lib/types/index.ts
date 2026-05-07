@@ -106,7 +106,6 @@ export interface VideoHistoryItem {
   vod_actor?: string;
   type_name?: string;
   vod_area?: string;
-  rotation?: 0 | 90 | 180 | 270;
 }
 
 // Favorite Entry
