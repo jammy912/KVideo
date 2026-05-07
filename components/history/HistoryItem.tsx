@@ -56,36 +56,14 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       return;
     }
 
-    // Try to enter native fullscreen synchronously while the user gesture
-    // is still alive. We pick targets in order of fullscreen-permission
-    // friendliness: <body> first (most permissive on mobile), then the
-    // root element. Defer SPA nav by a microtask so the fullscreen
-    // request fires inside the gesture's call frame.
+    // Cross-browser fullscreen-on-history-click is unreliable when the
+    // request is followed by navigation. Instead drop a flag and let the
+    // player itself enter fullscreen once playback is stable. Browsers
+    // tend to be more lenient about fullscreen on a video that is
+    // actively playing than about fullscreen-then-navigate.
     event.preventDefault();
-    const requestFs = (target: HTMLElement | null): Promise<void> | null => {
-      if (!target) return null;
-      const el = target as HTMLElement & {
-        webkitRequestFullscreen?: () => Promise<void> | void;
-      };
-      const fn = el.requestFullscreen ?? el.webkitRequestFullscreen;
-      if (!fn) return null;
-      try {
-        const result = fn.call(el);
-        return result instanceof Promise ? result : Promise.resolve();
-      } catch {
-        return null;
-      }
-    };
-
-    const fsPromise =
-      requestFs(document.body) ?? requestFs(document.documentElement);
-    fsPromise?.catch(() => { /* ignore — fall through and let user tap */ });
-
-    // iOS Safari has no Element.requestFullscreen, but
-    // HTMLVideoElement.webkitEnterFullscreen() works once the video has
-    // mounted and started. Drop a flag for the player to pick up.
     try {
-      sessionStorage.setItem('kvideo-pending-ios-fullscreen', '1');
+      sessionStorage.setItem('kvideo-pending-fullscreen', '1');
     } catch { /* ignore */ }
 
     router.push(getVideoUrl());

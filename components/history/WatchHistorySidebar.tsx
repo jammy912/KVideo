@@ -15,7 +15,13 @@ import { HistoryFooter } from './HistoryFooter';
 import { trapFocus } from '@/lib/accessibility/focus-management';
 import { useFloatingButtonPosition } from '@/lib/hooks/useFloatingButtonPosition';
 
-export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean }) {
+export function WatchHistorySidebar({
+  isPremium = false,
+  autoOpenIfHasHistory = false,
+}: {
+  isPremium?: boolean;
+  autoOpenIfHasHistory?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -32,6 +38,7 @@ export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean
   // is per-tab (sessionStorage). After the user closes the sidebar (or opens
   // a new tab) it stays closed until next tab.
   useEffect(() => {
+    if (!autoOpenIfHasHistory) return;
     if (autoOpenedRef.current) return;
     if (typeof window === 'undefined') return;
     if (sessionStorage.getItem('kvideo-history-auto-opened') === '1') return;
@@ -39,7 +46,7 @@ export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean
     autoOpenedRef.current = true;
     sessionStorage.setItem('kvideo-history-auto-opened', '1');
     setIsOpen(true);
-  }, [viewingHistory.length]);
+  }, [autoOpenIfHasHistory, viewingHistory.length]);
   const {
     floatingStyle,
     onPointerDown,

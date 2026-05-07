@@ -232,33 +232,46 @@ export function DesktopVideoPlayer({
     onRotationChange?.(videoRotation.rotation);
   }, [videoRotation.rotation, isMobile, onRotationChange]);
 
-  // iOS path: trigger webkitEnterFullscreen() once playback is healthy.
-  // Set by HistoryItem before SPA nav. iOS Safari has no requestFullscreen
-  // on elements other than <video>, so this is the only way to auto-enter
-  // fullscreen on iPhone.
-  const iosFsAppliedRef = React.useRef(false);
+  // Auto-enter native fullscreen when navigated from history.
+  // HistoryItem sets a sessionStorage flag before SPA navigation.
+  // We wait until playback is healthy (duration set, playing, past
+  // initialTime + 0.3s) so the call lands after the seek completes.
+  // - iOS Safari: video.webkitEnterFullscreen() (no Element FS API)
+  // - Others: container.requestFullscreen()
+  const fsAppliedRef = React.useRef(false);
   React.useEffect(() => {
-    if (iosFsAppliedRef.current) return;
-    if (!isIOS) return;
+    if (fsAppliedRef.current) return;
     if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem('kvideo-pending-ios-fullscreen') !== '1') return;
+    if (sessionStorage.getItem('kvideo-pending-fullscreen') !== '1') return;
     if (data.duration <= 0) return;
     if (!data.isPlaying) return;
     if (data.currentTime <= (initialTime || 0) + 0.3) return;
 
-    const v = refs.videoRef.current as (HTMLVideoElement & {
-      webkitEnterFullscreen?: () => void;
-    }) | null;
-    if (!v || typeof v.webkitEnterFullscreen !== 'function') return;
+    fsAppliedRef.current = true;
+    sessionStorage.removeItem('kvideo-pending-fullscreen');
 
-    iosFsAppliedRef.current = true;
-    sessionStorage.removeItem('kvideo-pending-ios-fullscreen');
-    try {
-      v.webkitEnterFullscreen();
-    } catch {
-      // Browser refused — user can tap the fullscreen button.
+    if (isIOS) {
+      const v = refs.videoRef.current as (HTMLVideoElement & {
+        webkitEnterFullscreen?: () => void;
+      }) | null;
+      if (v && typeof v.webkitEnterFullscreen === 'function') {
+        try { v.webkitEnterFullscreen(); } catch { /* ignore */ }
+      }
+    } else {
+      const c = refs.containerRef.current as (HTMLDivElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+      }) | null;
+      const fn = c?.requestFullscreen ?? c?.webkitRequestFullscreen;
+      if (c && fn) {
+        try {
+          const p = fn.call(c);
+          if (p && typeof (p as Promise<void>).then === 'function') {
+            (p as Promise<void>).catch(() => { /* ignore */ });
+          }
+        } catch { /* ignore */ }
+      }
     }
-  }, [isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef]);
+  }, [isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef, refs.containerRef]);
 
   // Sync UI fullscreen state with browser fullscreen state on mount.
   // HistoryItem can call requestFullscreen() before SPA navigation, so
