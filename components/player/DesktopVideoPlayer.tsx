@@ -317,11 +317,11 @@ export function DesktopVideoPlayer({
   } = logic;
 
   // Auto-enter web fullscreen once when opened from history.
-  // Skip logic.toggleWindowFullscreen() to avoid the orientation-lock path,
-  // and wait until the video has actually progressed (currentTime > 0),
-  // which confirms the playback engine is emitting events. Native HLS on
-  // iOS otherwise survives the CSS reflow but stops dispatching
-  // timeupdate/progress for several seconds, leaving the UI looking stuck.
+  // We bypass logic.toggleWindowFullscreen() because that path calls
+  // screen.orientation.lock(), which (a) requires a user gesture on Android
+  // and (b) triggers a layout reflow that can desync hls.js / play state
+  // during initial buffering. Web fullscreen here is purely a CSS state
+  // change, so flipping the mode flag directly is enough.
   const autoFullscreenAppliedRef = React.useRef(false);
   React.useEffect(() => {
     if (!autoFullscreen) return;
@@ -329,19 +329,10 @@ export function DesktopVideoPlayer({
     if (data.fullscreenMode !== 'none') return;
     if (data.duration <= 0) return;
     if (!data.isPlaying) return;
-    if (data.currentTime <= 0.5) return;
     autoFullscreenAppliedRef.current = true;
     actions.setFullscreenMode('window');
     actions.setIsFullscreen(true);
-
-    const recover = window.setTimeout(() => {
-      const v = refs.videoRef.current;
-      if (v && v.paused) {
-        void v.play().catch(() => { /* ignore */ });
-      }
-    }, 150);
-    return () => window.clearTimeout(recover);
-  }, [autoFullscreen, data.duration, data.fullscreenMode, data.isPlaying, data.currentTime, actions, refs.videoRef]);
+  }, [autoFullscreen, data.duration, data.fullscreenMode, data.isPlaying, actions]);
 
   // Apply video rotation styles
   const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};
