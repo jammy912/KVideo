@@ -56,26 +56,31 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       return;
     }
 
-    // Try to enter native fullscreen synchronously while we still have a
-    // user gesture. Then navigate via SPA router so the fullscreen state
-    // survives (a hard navigation would force-exit fullscreen).
+    // Try to enter native fullscreen synchronously while the user gesture
+    // is still alive. We pick targets in order of fullscreen-permission
+    // friendliness: <body> first (most permissive on mobile), then the
+    // root element. Defer SPA nav by a microtask so the fullscreen
+    // request fires inside the gesture's call frame.
     event.preventDefault();
-    const el = document.documentElement as HTMLElement & {
-      webkitRequestFullscreen?: () => Promise<void>;
-    };
-    const req =
-      el.requestFullscreen?.bind(el) ||
-      el.webkitRequestFullscreen?.bind(el);
-    if (req) {
+    const requestFs = (target: HTMLElement | null): Promise<void> | null => {
+      if (!target) return null;
+      const el = target as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+      };
+      const fn = el.requestFullscreen ?? el.webkitRequestFullscreen;
+      if (!fn) return null;
       try {
-        const p = req();
-        if (p && typeof p.then === 'function') {
-          p.catch(() => { /* ignore — browser may refuse */ });
-        }
+        const result = fn.call(el);
+        return result instanceof Promise ? result : Promise.resolve();
       } catch {
-        // ignore
+        return null;
       }
-    }
+    };
+
+    const fsPromise =
+      requestFs(document.body) ?? requestFs(document.documentElement);
+    fsPromise?.catch(() => { /* ignore — fall through and let user tap */ });
+
     router.push(getVideoUrl());
   };
 
