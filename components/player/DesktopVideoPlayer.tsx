@@ -316,16 +316,29 @@ export function DesktopVideoPlayer({
     handleVideoError,
   } = logic;
 
-  // Auto-enter web fullscreen once when opened from history
+  // Auto-enter web fullscreen once when opened from history.
+  // Wait until playback is actually running, then defer one tick so the
+  // orientation-lock side effects don't race with the play() call.
+  // After switching, kick the video again if the layout shift paused it.
   const autoFullscreenAppliedRef = React.useRef(false);
   React.useEffect(() => {
     if (!autoFullscreen) return;
     if (autoFullscreenAppliedRef.current) return;
     if (data.fullscreenMode !== 'none') return;
     if (data.duration <= 0) return;
+    if (!data.isPlaying) return;
     autoFullscreenAppliedRef.current = true;
-    void logic.toggleWindowFullscreen();
-  }, [autoFullscreen, data.duration, data.fullscreenMode, logic]);
+
+    const timer = window.setTimeout(async () => {
+      await logic.toggleWindowFullscreen();
+      const v = refs.videoRef.current;
+      if (v && v.paused) {
+        try { await v.play(); } catch { /* ignore */ }
+      }
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [autoFullscreen, data.duration, data.fullscreenMode, data.isPlaying, logic, refs.videoRef]);
 
   // Apply video rotation styles
   const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};
