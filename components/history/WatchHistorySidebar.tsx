@@ -27,15 +27,17 @@ export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean
   const cleanupFocusTrapRef = useRef<(() => void) | null>(null);
   const autoOpenedRef = useRef(false);
 
-  // Auto-open once after login if user has watch history.
-  // Flag is set by PasswordGate on successful login; cleared after first use.
+  // Auto-open once per browser tab when user has watch history.
+  // Covers both fresh login and "remembered password" paths since the gate
+  // is per-tab (sessionStorage). After the user closes the sidebar (or opens
+  // a new tab) it stays closed until next tab.
   useEffect(() => {
     if (autoOpenedRef.current) return;
     if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem('kvideo-just-logged-in') !== '1') return;
+    if (sessionStorage.getItem('kvideo-history-auto-opened') === '1') return;
     if (viewingHistory.length === 0) return;
     autoOpenedRef.current = true;
-    sessionStorage.removeItem('kvideo-just-logged-in');
+    sessionStorage.setItem('kvideo-history-auto-opened', '1');
     setIsOpen(true);
   }, [viewingHistory.length]);
   const {
