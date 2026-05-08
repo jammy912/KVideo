@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icons } from '@/components/ui/Icon';
 import { useVideoRotation } from '../hooks/useVideoRotation';
+import { useIsMobile } from '@/lib/hooks/mobile/useDeviceDetection';
 
 interface DesktopRightControlsProps {
     isNativeFullscreen: boolean;
@@ -29,11 +30,12 @@ export function DesktopRightControls({
     onShowCastMenu,
     videoRotation
 }: DesktopRightControlsProps) {
+    const isMobile = useIsMobile();
     return (
         <div className="relative z-50 flex items-center gap-3">
-            {/* Picture-in-Picture */}
+            {/* Picture-in-Picture - Hide on mobile */}
             {
-                isPiPSupported && (
+                isPiPSupported && !isMobile && (
                     <button
                         onClick={onTogglePictureInPicture}
                         className="btn-icon"
