@@ -66,6 +66,11 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       sessionStorage.setItem('kvideo-pending-fullscreen', '1');
     } catch { /* ignore */ }
 
+    // Tell the sidebar to close before we navigate, so the home page
+    // (which stays mounted across SPA navigation in some cases, and on
+    // back-navigation always) doesn't keep the panel hanging open.
+    window.dispatchEvent(new CustomEvent('kvideo-close-history-sidebar'));
+
     router.push(getVideoUrl());
   };
 

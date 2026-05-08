@@ -47,6 +47,13 @@ export function WatchHistorySidebar({
     sessionStorage.setItem('kvideo-history-auto-opened', '1');
     setIsOpen(true);
   }, [autoOpenIfHasHistory, viewingHistory.length]);
+
+  // Close when an item is clicked (HistoryItem dispatches this before nav).
+  useEffect(() => {
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('kvideo-close-history-sidebar', handleClose);
+    return () => window.removeEventListener('kvideo-close-history-sidebar', handleClose);
+  }, []);
   const {
     floatingStyle,
     onPointerDown,
