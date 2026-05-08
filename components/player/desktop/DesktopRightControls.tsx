@@ -91,15 +91,17 @@ export function DesktopRightControls({
                 )
             }
 
-            {/* Web Fullscreen */}
-            <button
-                onClick={onToggleWebFullscreen}
-                className="btn-icon"
-                aria-label={isWebFullscreen ? '退出网页全屏' : '网页全屏'}
-                title={isWebFullscreen ? '退出网页全屏 (W)' : '网页全屏 (W)'}
-            >
-                <Icons.Target size={20} className={isWebFullscreen ? 'text-[var(--accent-color)]' : ''} />
-            </button>
+            {/* Web Fullscreen - Hide on mobile (use system fullscreen instead) */}
+            {!isMobile && (
+                <button
+                    onClick={onToggleWebFullscreen}
+                    className="btn-icon"
+                    aria-label={isWebFullscreen ? '退出网页全屏' : '网页全屏'}
+                    title={isWebFullscreen ? '退出网页全屏 (W)' : '网页全屏 (W)'}
+                >
+                    <Icons.Target size={20} className={isWebFullscreen ? 'text-[var(--accent-color)]' : ''} />
+                </button>
+            )}
 
             {/* Native Fullscreen */}
             <button
