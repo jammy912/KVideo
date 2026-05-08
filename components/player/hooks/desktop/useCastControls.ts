@@ -71,6 +71,24 @@ export function useCastControls({
         loadMediaRef.current = loadMedia;
     }, [loadMedia]);
 
+    // Re-cast new media when src changes during an active session
+    // (e.g. user switched episode). Without this the receiver keeps
+    // playing the previous episode until the stream ends, then stops.
+    useEffect(() => {
+        if (!src) return;
+        const castContext = castContextRef.current;
+        if (!castContext) return;
+        const session = castContext.getCurrentSession?.();
+        if (!session) return;
+        const SessionState = window.cast?.framework?.SessionState;
+        if (!SessionState) return;
+        const state = castContext.getSessionState?.();
+        if (state !== SessionState.SESSION_STARTED && state !== SessionState.SESSION_RESUMED) {
+            return;
+        }
+        loadMedia();
+    }, [src, loadMedia]);
+
     useEffect(() => {
         let sessionStateListener: ((event: any) => void) | null = null;
         let onGCastApiAvailable: ((isAvailable: boolean) => void) | null = null;
