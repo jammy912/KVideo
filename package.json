@@ -1,14 +1,14 @@
 {
   "name": "kvideo",
-  "version": "4.9.2",
+  "version": "4.9.20",
   "private": true,
   "scripts": {
-    "dev": "next dev --port ${PORT:-3000}",
-    "build": "next build --webpack",
-    "start": "next start --port ${PORT:-3000}",
+    "dev": "node scripts/next-with-lan-access.mjs dev",
+    "build": "next build --webpack && node scripts/transpile-client-assets.mjs .next/static",
+    "start": "node scripts/next-with-lan-access.mjs start",
     "lint": "eslint",
     "test": "tsx --test tests/**/*.test.ts",
-    "pages:build": "next-on-pages"
+    "pages:build": "next-on-pages && node scripts/transpile-client-assets.mjs .vercel/output/static/_next/static"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -19,7 +19,7 @@
     "@vercel/analytics": "^2.0.1",
     "hls.js": "^1.6.15",
     "lucide-react": "^0.577.0",
-    "next": "16.1.7",
+    "next": "16.2.12",
     "opencc-js": "^1.0.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -29,10 +29,12 @@
     "@cloudflare/next-on-pages": "^1.13.16",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^25",
+    "@types/opencc-js": "^1.0.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.27.7",
     "eslint": "^9.25.1",
-    "eslint-config-next": "16.1.7",
+    "eslint-config-next": "16.2.12",
     "postcss": "^8.5.8",
     "postcss-preset-env": "^11.2.0",
     "tailwindcss": "^4",

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useHistoryStore, usePremiumHistoryStore } from '@/lib/store/history-store';
 import { useFavoritesStore, usePremiumFavoritesStore } from '@/lib/store/favorites-store';
+import { keepRenderableFavorites, keepRenderableHistory } from '@/lib/utils/sync-records';
 import { getProfileId } from '@/lib/store/auth-store';
 import { encryptPayload, decryptPayload, hasSyncKey } from '@/lib/utils/sync-crypto';
 
@@ -30,11 +31,14 @@ export function useCloudSync(isPremium = false) {
 
       const data = JSON.parse(plaintext) as { history?: unknown; favorites?: unknown };
 
-      if (Array.isArray(data.history) && data.history.length > 0) {
-        historyStore.getState().importHistory(data.history as Parameters<ReturnType<typeof historyStore.getState>['importHistory']>[0]);
+      const history = keepRenderableHistory(data.history);
+      const favorites = keepRenderableFavorites(data.favorites);
+
+      if (history.length > 0) {
+        historyStore.getState().importHistory(history);
       }
-      if (Array.isArray(data.favorites) && data.favorites.length > 0) {
-        favoritesStore.getState().importFavorites(data.favorites as Parameters<ReturnType<typeof favoritesStore.getState>['importFavorites']>[0]);
+      if (favorites.length > 0) {
+        favoritesStore.getState().importFavorites(favorites);
       }
     } catch (error) {
       console.error('Failed to pull from cloud:', error);

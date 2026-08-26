@@ -6,12 +6,20 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { TagManager } from './TagManager';
 import { MovieGrid } from './MovieGrid';
 import { useTagManager } from './hooks/useTagManager';
 import { usePopularMovies } from './hooks/usePopularMovies';
 import { usePersonalizedRecommendations } from './hooks/usePersonalizedRecommendations';
+
+interface DoubanMovie {
+  id: string;
+  title: string;
+  cover: string;
+  rate: string;
+  url: string;
+}
 
 interface PopularFeaturesProps {
   onSearch?: (query: string) => void;
@@ -46,19 +54,10 @@ export function PopularFeatures({ onSearch }: PopularFeaturesProps) {
     loadMoreRef: recommendLoadMoreRef,
   } = usePersonalizedRecommendations(false);
 
-  // Track whether the recommendation tab is active
-  const [isRecommendSelected, setIsRecommendSelected] = useState(hasHistory);
-
-  // Sync selection when hasHistory changes after Zustand hydration from localStorage.
-  // On first render the store is empty (hasHistory=false), so useState captures false.
-  // Once hydration completes and hasHistory becomes true, auto-select the recommendation tab.
-  useEffect(() => {
-    if (hasHistory) {
-      setIsRecommendSelected(true);
-    }
-  }, [hasHistory]);
+  const [isRecommendSelected, setIsRecommendSelected] = useState(false);
 
   const effectiveRecommendSelected = hasHistory && isRecommendSelected;
+  const isTagManagementMode = showTagManager;
 
   const {
     movies,
@@ -72,7 +71,7 @@ export function PopularFeatures({ onSearch }: PopularFeaturesProps) {
     contentType
   );
 
-  const handleMovieClick = (movie: any) => {
+  const handleMovieClick = (movie: DoubanMovie) => {
     if (onSearch) {
       onSearch(movie.title);
     }
@@ -94,7 +93,7 @@ export function PopularFeatures({ onSearch }: PopularFeaturesProps) {
   return (
     <div className="animate-fade-in">
       {/* Content Type Toggle (Capsule Liquid Glass - Fixed & Centered) */}
-      {!effectiveRecommendSelected && (
+      {!isTagManagementMode && !effectiveRecommendSelected && (
         <div className="mb-10 flex justify-center">
           <div className="relative w-80 p-1 bg-[var(--glass-bg)] border border-[var(--glass-border)] rounded-full grid grid-cols-2 backdrop-blur-2xl shadow-lg ring-1 ring-white/10 overflow-hidden">
             {/* Sliding Indicator */}
@@ -145,24 +144,26 @@ export function PopularFeatures({ onSearch }: PopularFeaturesProps) {
         } : undefined}
       />
 
-      {effectiveRecommendSelected ? (
-        <MovieGrid
-          movies={recommendMovies}
-          loading={recommendLoading}
-          hasMore={recommendHasMore}
-          onMovieClick={handleMovieClick}
-          prefetchRef={recommendPrefetchRef}
-          loadMoreRef={recommendLoadMoreRef}
-        />
-      ) : (
-        <MovieGrid
-          movies={movies}
-          loading={loading}
-          hasMore={hasMore}
-          onMovieClick={handleMovieClick}
-          prefetchRef={prefetchRef}
-          loadMoreRef={loadMoreRef}
-        />
+      {!isTagManagementMode && (
+        effectiveRecommendSelected ? (
+          <MovieGrid
+            movies={recommendMovies}
+            loading={recommendLoading}
+            hasMore={recommendHasMore}
+            onMovieClick={handleMovieClick}
+            prefetchRef={recommendPrefetchRef}
+            loadMoreRef={recommendLoadMoreRef}
+          />
+        ) : (
+          <MovieGrid
+            movies={movies}
+            loading={loading}
+            hasMore={hasMore}
+            onMovieClick={handleMovieClick}
+            prefetchRef={prefetchRef}
+            loadMoreRef={loadMoreRef}
+          />
+        )
       )}
     </div>
   );

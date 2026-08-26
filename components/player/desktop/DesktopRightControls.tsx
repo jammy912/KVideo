@@ -32,13 +32,13 @@ export function DesktopRightControls({
 }: DesktopRightControlsProps) {
     const isMobile = useIsMobile();
     return (
-        <div className="relative z-50 flex items-center gap-3">
+        <div className="player-controls-right relative z-50 flex shrink-0 items-center gap-3">
             {/* Picture-in-Picture - Hide on mobile */}
             {
                 isPiPSupported && !isMobile && (
                     <button
                         onClick={onTogglePictureInPicture}
-                        className="btn-icon"
+                        className="btn-icon shrink-0"
                         aria-label="画中画"
                         title="画中画"
                     >
@@ -52,7 +52,7 @@ export function DesktopRightControls({
                 isAirPlaySupported && (
                     <button
                         onClick={onShowAirPlayMenu}
-                        className="btn-icon"
+                        className="btn-icon shrink-0"
                         aria-label="隔空播放"
                         title="隔空播放"
                     >
@@ -66,7 +66,7 @@ export function DesktopRightControls({
                 isCastAvailable && (
                     <button
                         onClick={onShowCastMenu}
-                        className="btn-icon"
+                        className="btn-icon shrink-0"
                         aria-label="投屏"
                         title="投屏"
                     >
@@ -80,7 +80,7 @@ export function DesktopRightControls({
                 videoRotation && (
                     <button
                         onClick={videoRotation.toggleRotation}
-                        className="btn-icon"
+                        className="btn-icon shrink-0"
                         aria-label="旋轉影片"
                         title={`旋轉影片 (${videoRotation.rotation}°)`}
                     >
@@ -95,18 +95,20 @@ export function DesktopRightControls({
             {!isMobile && (
                 <button
                     onClick={onToggleWebFullscreen}
-                    className="btn-icon"
+                    className="btn-icon shrink-0"
                     aria-label={isWebFullscreen ? '退出网页全屏' : '网页全屏'}
                     title={isWebFullscreen ? '退出网页全屏 (W)' : '网页全屏 (W)'}
                 >
-                    <Icons.Target size={20} className={isWebFullscreen ? 'text-[var(--accent-color)]' : ''} />
+                    {isWebFullscreen
+                        ? <Icons.WebFullscreenExit size={20} className="text-[var(--accent-color)]" />
+                        : <Icons.WebFullscreen size={20} />}
                 </button>
             )}
 
             {/* Native Fullscreen */}
             <button
                 onClick={onToggleNativeFullscreen}
-                className="btn-icon"
+                className="btn-icon shrink-0"
                 aria-label={isNativeFullscreen ? '退出系统全屏' : '系统全屏'}
                 title={isNativeFullscreen ? '退出系统全屏 (F)' : '系统全屏 (F)'}
             >

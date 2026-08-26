@@ -269,6 +269,7 @@ KVideo 现在支持两套认证模式：
 - 配置 `AUTH_SECRET`
 - 配置 `UPSTASH_REDIS_REST_URL`
 - 配置 `UPSTASH_REDIS_REST_TOKEN`
+- （可选）配置 `MANAGED_AUTH_ENABLED=true` 强制优先使用托管账户模式
 
 启用后：
 
@@ -277,6 +278,7 @@ KVideo 现在支持两套认证模式：
 - 超级管理员可在设置页直接管理账户和权限
 - 配置同步、历史、收藏等跨设备数据会按登录账户自动隔离
 
+> **强制优先托管模式**：设置 `MANAGED_AUTH_ENABLED=true` 只会改变认证模式选择，不会跳过 `AUTH_SECRET` 和 Redis 检查。缺少 `AUTH_SECRET`、`UPSTASH_REDIS_REST_URL` 或 `UPSTASH_REDIS_REST_TOKEN` 时，托管账户模式仍不会启用。
 首次启用时，如果 Redis 里还没有账户，会自动使用 `ADMIN_PASSWORD` 和 `ACCOUNTS` 作为引导种子创建首批托管账户。
 
 ### 方式二：单管理员密码（环境变量模式）
@@ -609,6 +611,43 @@ PORT=8080 npm run start
 docker run -e PORT=8080 -p 8080:8080 --name kvideo kuekhaoyang/kvideo:latest
 ```
 
+## 局域网 IP 访问
+
+通过 `ALLOW_LAN_ACCESS` 环境变量控制本机开发或传统 Node.js 自托管时是否允许同一局域网设备直接访问当前设备 IP。
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `ALLOW_LAN_ACCESS` | 设为 `true` / `1` / `yes` / `on` 时，`npm run dev` 和 `npm run start` 会绑定 `0.0.0.0`，并在开发模式下放行常见内网 IPv4 来源；未开启时默认只绑定 `localhost` | `false` |
+| `NEXT_PUBLIC_ALLOW_LAN_ACCESS` | `ALLOW_LAN_ACCESS` 的构建时兼容名称；优先使用 `ALLOW_LAN_ACCESS` | `false` |
+| `LAN_ALLOWED_DEV_ORIGINS` | 追加 Next.js 开发模式允许访问 dev 资源的主机名或通配符，逗号、空格或换行分隔 | - |
+
+**示例：**
+
+```bash
+# 开发模式允许同局域网设备访问
+ALLOW_LAN_ACCESS=true npm run dev
+
+# 传统 Node.js 生产模式允许同局域网设备访问
+ALLOW_LAN_ACCESS=true npm run start
+
+# 追加自定义开发来源；Next.js 需要主机名，不要填写路径
+ALLOW_LAN_ACCESS=true LAN_ALLOWED_DEV_ORIGINS="kvideo.lan,192.168.50.10" npm run dev
+```
+
+开启后访问地址通常是 `http://<当前设备内网 IP>:3000`。如果仍然无法访问，优先检查系统防火墙、路由器客户端隔离、端口映射、反向代理监听地址以及实际运行端口；这些不是 KVideo 前端代码可以绕过的问题。Docker 镜像已经在容器内绑定 `0.0.0.0`，是否能从局域网访问主要取决于 `-p` 端口映射和宿主机网络策略。
+
+## 内置媒体代理说明
+
+设置页的“代理播放模式”使用的是当前 KVideo 部署内置的 `/api/proxy` 媒体转发端点，不是让用户填写第三方 HTTP/SOCKS 代理服务器。
+
+| 模式 | 行为 |
+|------|------|
+| 智能重试 | 优先直连，播放失败后自动切换到 `/api/proxy` |
+| 仅直连 | 不使用 `/api/proxy`，失败时直接报错 |
+| 总是代理 | 播放地址始终通过 `/api/proxy` 转发 |
+
+`/api/proxy?url=<encoded-video-url>` 只在 Docker 或传统 Node.js 自托管完整模式下启用。Vercel / Cloudflare 托管部署运行合规模式，会禁用外部媒体代理、热链转发和 IPTV 流中继；这种部署环境下设置页会显示仅支持直连播放。
+
 ## 自定义源 JSON 格式
 
 如果你想创建自己的订阅源或批量导入源，可以使用以下 JSON 格式。
@@ -680,12 +719,15 @@ docker run -e PORT=8080 -p 8080:8080 --name kvideo kuekhaoyang/kvideo:latest
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
 | `AUTH_SECRET` | 托管账户模式的会话签名密钥；启用 Redis 托管账户时必填 | - |
+| `MANAGED_AUTH_ENABLED` | 设为 `true` 时强制优先使用托管账户模式；仍要求 `AUTH_SECRET` 和 Upstash Redis 配置完整 | - |
 | `ADMIN_PASSWORD` | 管理员密码；环境变量模式直接生效，也可作为托管模式首次引导的超级管理员种子 | - |
 | `ACCESS_PASSWORD` | 访问密码（向后兼容，等同于 `ADMIN_PASSWORD`） | - |
 | `ACCOUNTS` | 多账户配置；支持 `密码:名称[:角色[:权限1\|权限2]]` 和 `用户名:密码:名称[:角色[:权限1\|权限2]]` 两种格式 | - |
 | `PREMIUM_PASSWORD` | 高级内容独立密码，访问 `/premium` 时需输入 | - |
 | `PERSIST_SESSION` | 是否持久化登录会话 | `true` |
 | `PORT` | 自定义应用端口 | `3000` |
+| `ALLOW_LAN_ACCESS` / `NEXT_PUBLIC_ALLOW_LAN_ACCESS` | 允许同局域网设备通过当前设备 IP 访问本机开发或传统 Node.js 自托管服务 | `false` |
+| `LAN_ALLOWED_DEV_ORIGINS` / `NEXT_PUBLIC_LAN_ALLOWED_DEV_ORIGINS` | 追加 Next.js 开发模式允许访问 dev 资源的主机名或通配符 | - |
 | `NEXT_PUBLIC_SITE_TITLE` | 浏览器标签页标题 | `KVideo - 视频聚合平台` |
 | `NEXT_PUBLIC_SITE_DESCRIPTION` | 站点描述 | `视频聚合平台` |
 | `NEXT_PUBLIC_SITE_NAME` | 站点头部名称 | `KVideo` |
@@ -723,7 +765,7 @@ docker run -e PORT=8080 -p 8080:8080 --name kvideo kuekhaoyang/kvideo:latest
 
 - **ESLint 10**：代码质量检查
 - **PostCSS 8**：CSS 处理器
-- **Vercel Analytics**：性能监控和分析
+- **Vercel Analytics**：仅在 Vercel 部署中启用的性能监控和分析
 - **Cloudflare Pages**：边缘部署支持
 
 ### 架构特点
@@ -819,6 +861,8 @@ npm start
 ```
 
 应用将在 `http://localhost:3000` 启动。
+
+同一局域网设备需要直接访问当前设备 IP 时，使用 `ALLOW_LAN_ACCESS=true npm run start`，并确认系统防火墙允许入站访问对应端口。
 
 #### 选项 3：Vercel / Cloudflare 托管部署（合规模式）
 

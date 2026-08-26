@@ -1,17 +1,28 @@
-import { Redis } from '@upstash/redis';
 import { NextRequest, NextResponse } from 'next/server';
+import { authenticationRequiredResponse } from '@/lib/server/api-responses';
 import { getServerSession } from '@/lib/server/auth';
+import { getRedisClient } from '@/lib/server/redis';
 
 export const runtime = 'edge';
 
-const redis = Redis.fromEnv();
+function syncUnavailableResponse() {
+  return NextResponse.json(
+    { error: 'Server-side sync is not configured on this deployment' },
+    { status: 503 }
+  );
+}
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(request);
   const profileId = session?.profileId;
 
   if (!profileId) {
-    return NextResponse.json({ error: 'Missing profileId' }, { status: 400 });
+    return authenticationRequiredResponse();
+  }
+
+  const redis = getRedisClient();
+  if (!redis) {
+    return syncUnavailableResponse();
   }
 
   try {
@@ -28,7 +39,12 @@ export async function POST(request: NextRequest) {
   const profileId = session?.profileId;
 
   if (!profileId) {
-    return NextResponse.json({ error: 'Missing profileId' }, { status: 400 });
+    return authenticationRequiredResponse();
+  }
+
+  const redis = getRedisClient();
+  if (!redis) {
+    return syncUnavailableResponse();
   }
 
   try {
