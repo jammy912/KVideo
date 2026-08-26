@@ -25,6 +25,8 @@ interface VideoPlayerProps {
   externalTimeRef?: React.MutableRefObject<number>;
   // Resolution callback
   onResolutionDetected?: (info: import('./hooks/useVideoResolution').VideoResolutionInfo) => void;
+  initialRotation?: 0 | 90 | 180 | 270;
+  onRotationChange?: (rotation: 0 | 90 | 180 | 270) => void;
 }
 
 export function VideoPlayer({
@@ -40,6 +42,8 @@ export function VideoPlayer({
   episodeName,
   externalTimeRef,
   onResolutionDetected,
+  initialRotation,
+  onRotationChange,
 }: VideoPlayerProps) {
   const [videoError, setVideoError] = useState<string>('');
   const [useProxy, setUseProxy] = useState(false);
@@ -119,17 +123,38 @@ export function VideoPlayer({
     }
   }, [videoId, playUrl, saveProgress]);
 
-  // Save on page leave/refresh
+  // Save on page leave / refresh / iOS exit-fullscreen / SPA unmount.
+  // iOS in webkitEnterFullscreen() can swallow the final timeupdate, so
+  // we force a save on webkitendfullscreen and on pagehide (the iOS
+  // equivalent of beforeunload, which fires reliably on Safari).
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Save current progress before leaving
+    const flush = () => {
       if (currentTimeRef.current > 1 && durationRef.current > 0) {
         saveProgress(currentTimeRef.current, durationRef.current);
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('beforeunload', flush);
+    window.addEventListener('pagehide', flush);
+
+    const handleVideoEvent = () => flush();
+    const attachVideoListener = () => {
+      const videos = document.getElementsByTagName('video');
+      for (let i = 0; i < videos.length; i++) {
+        videos[i].addEventListener('webkitendfullscreen', handleVideoEvent);
+      }
+      return videos;
+    };
+    const videos = attachVideoListener();
+
+    return () => {
+      window.removeEventListener('beforeunload', flush);
+      window.removeEventListener('pagehide', flush);
+      for (let i = 0; i < videos.length; i++) {
+        videos[i].removeEventListener('webkitendfullscreen', handleVideoEvent);
+      }
+      flush();
+    };
   }, [saveProgress]);
 
   // Handle video errors
@@ -180,7 +205,7 @@ export function VideoPlayer({
   }
 
   return (
-    <div data-no-spatial className="relative">
+    <div data-no-spatial className="relative rounded-none md:rounded-[var(--radius-2xl)] md:border md:border-[var(--glass-border)] md:shadow-[var(--shadow-md)] bg-black md:bg-[var(--glass-bg)]">
       {/* Mode Indicator Badge - controlled by settings */}
       {showModeIndicator && (
         <div className="absolute top-3 right-3 z-30">
@@ -216,6 +241,8 @@ export function VideoPlayer({
           episodeName={episodeName}
           isPremium={isPremium}
           onResolutionDetected={onResolutionDetected}
+          initialRotation={initialRotation}
+          onRotationChange={onRotationChange}
         />
       )}
     </div>

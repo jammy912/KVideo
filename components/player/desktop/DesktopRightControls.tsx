@@ -1,7 +1,7 @@
 import React from 'react';
 import { Icons } from '@/components/ui/Icon';
-
-
+import { useVideoRotation } from '../hooks/useVideoRotation';
+import { useIsMobile } from '@/lib/hooks/mobile/useDeviceDetection';
 
 interface DesktopRightControlsProps {
     isNativeFullscreen: boolean;
@@ -14,6 +14,7 @@ interface DesktopRightControlsProps {
     onTogglePictureInPicture: () => void;
     onShowAirPlayMenu: () => void;
     onShowCastMenu: () => void;
+    videoRotation?: ReturnType<typeof useVideoRotation>;
 }
 
 export function DesktopRightControls({
@@ -26,13 +27,15 @@ export function DesktopRightControls({
     onToggleWebFullscreen,
     onTogglePictureInPicture,
     onShowAirPlayMenu,
-    onShowCastMenu
+    onShowCastMenu,
+    videoRotation
 }: DesktopRightControlsProps) {
+    const isMobile = useIsMobile();
     return (
         <div className="player-controls-right relative z-50 flex shrink-0 items-center gap-3">
-            {/* Picture-in-Picture */}
+            {/* Picture-in-Picture - Hide on mobile */}
             {
-                isPiPSupported && (
+                isPiPSupported && !isMobile && (
                     <button
                         onClick={onTogglePictureInPicture}
                         className="btn-icon shrink-0"
@@ -72,17 +75,35 @@ export function DesktopRightControls({
                 )
             }
 
-            {/* Web Fullscreen */}
-            <button
-                onClick={onToggleWebFullscreen}
-                className="btn-icon shrink-0"
-                aria-label={isWebFullscreen ? '退出网页全屏' : '网页全屏'}
-                title={isWebFullscreen ? '退出网页全屏 (W)' : '网页全屏 (W)'}
-            >
-                {isWebFullscreen
-                    ? <Icons.WebFullscreenExit size={20} className="text-[var(--accent-color)]" />
-                    : <Icons.WebFullscreen size={20} />}
-            </button>
+            {/* Video Rotation - Only show on mobile/tablet */}
+            {
+                videoRotation && (
+                    <button
+                        onClick={videoRotation.toggleRotation}
+                        className="btn-icon shrink-0"
+                        aria-label="旋轉影片"
+                        title={`旋轉影片 (${videoRotation.rotation}°)`}
+                    >
+                        <div style={{ transform: `rotate(${videoRotation.rotation}deg)`, transition: 'transform 0.3s ease-in-out' }}>
+                            <Icons.RefreshCw size={20} />
+                        </div>
+                    </button>
+                )
+            }
+
+            {/* Web Fullscreen - Hide on mobile (use system fullscreen instead) */}
+            {!isMobile && (
+                <button
+                    onClick={onToggleWebFullscreen}
+                    className="btn-icon shrink-0"
+                    aria-label={isWebFullscreen ? '退出网页全屏' : '网页全屏'}
+                    title={isWebFullscreen ? '退出网页全屏 (W)' : '网页全屏 (W)'}
+                >
+                    {isWebFullscreen
+                        ? <Icons.WebFullscreenExit size={20} className="text-[var(--accent-color)]" />
+                        : <Icons.WebFullscreen size={20} />}
+                </button>
+            )}
 
             {/* Native Fullscreen */}
             <button

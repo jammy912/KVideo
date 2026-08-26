@@ -16,7 +16,13 @@ import { FavoritesFooter } from './FavoritesFooter';
 import { trapFocus } from '@/lib/accessibility/focus-management';
 import { useFloatingButtonPosition } from '@/lib/hooks/useFloatingButtonPosition';
 
-export function FavoritesSidebar({ isPremium = false }: { isPremium?: boolean }) {
+export function FavoritesSidebar({
+  isPremium = false,
+  autoOpenHistoryIfHasItems = false,
+}: {
+  isPremium?: boolean;
+  autoOpenHistoryIfHasItems?: boolean;
+}) {
     const [isOpen, setIsOpen] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{
         isOpen: boolean;
@@ -141,7 +147,10 @@ export function FavoritesSidebar({ isPremium = false }: { isPremium?: boolean })
             </aside>
 
             {/* Watch History Sidebar - Right side */}
-            <WatchHistorySidebar isPremium={isPremium} />
+            <WatchHistorySidebar
+              isPremium={isPremium}
+              autoOpenIfHasHistory={autoOpenHistoryIfHasItems}
+            />
 
             {/* Confirm Dialog */}
             <ConfirmDialog

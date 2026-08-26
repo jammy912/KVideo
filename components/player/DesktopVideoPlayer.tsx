@@ -6,6 +6,7 @@ import { useDesktopPlayerLogic } from './hooks/useDesktopPlayerLogic';
 import { useHlsPlayer } from './hooks/useHlsPlayer';
 import { useAutoSkip } from './hooks/useAutoSkip';
 import { useStallDetection } from './hooks/useStallDetection';
+import { useVideoRotation } from './hooks/useVideoRotation';
 import { useVideoResolution } from './hooks/useVideoResolution';
 import { DesktopControlsWrapper } from './desktop/DesktopControlsWrapper';
 import { DesktopOverlayWrapper } from './desktop/DesktopOverlayWrapper';
@@ -72,6 +73,9 @@ interface DesktopVideoPlayerProps {
   isPremium?: boolean;
   // Resolution callback
   onResolutionDetected?: (info: import('./hooks/useVideoResolution').VideoResolutionInfo) => void;
+  // Persisted rotation (mobile-only)
+  initialRotation?: 0 | 90 | 180 | 270;
+  onRotationChange?: (rotation: 0 | 90 | 180 | 270) => void;
 }
 
 export function DesktopVideoPlayer({
@@ -89,6 +93,8 @@ export function DesktopVideoPlayer({
   episodeName = '',
   isPremium = false,
   onResolutionDetected,
+  initialRotation = 0,
+  onRotationChange,
 }: DesktopVideoPlayerProps) {
   const { refs, data, actions } = useDesktopPlayerState();
   const { fullscreenType: settingsFullscreenType } = usePlayerSettings(isPremium);
@@ -209,6 +215,98 @@ export function DesktopVideoPlayer({
     return () => window.clearInterval(interval);
   }, [data.isFullscreen]);
 
+  // Initialize video rotation hook (only enabled on mobile/tablet)
+  const videoRotation = useVideoRotation({
+    videoRef: refs.videoRef,
+    containerRef: refs.containerRef,
+    isFullscreen: data.isFullscreen,
+    enabled: isMobile,
+    initialRotation
+  });
+
+  // Persist rotation back to history when user changes it (mobile only).
+  const lastReportedRotationRef = React.useRef(initialRotation);
+  React.useEffect(() => {
+    if (!isMobile) return;
+    if (videoRotation.rotation === lastReportedRotationRef.current) return;
+    lastReportedRotationRef.current = videoRotation.rotation;
+    onRotationChange?.(videoRotation.rotation);
+  }, [videoRotation.rotation, isMobile, onRotationChange]);
+
+  // Auto-enter native fullscreen when navigated from history.
+  // HistoryItem sets a sessionStorage flag before SPA navigation.
+  // We wait until playback is healthy (duration set, playing, past
+  // initialTime + 0.3s) so the call lands after the seek completes.
+  // - iOS Safari: video.webkitEnterFullscreen() (no Element FS API)
+  // - Others: container.requestFullscreen()
+  const fsAppliedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (fsAppliedRef.current) return;
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('kvideo-pending-fullscreen') !== '1') return;
+    if (data.duration <= 0) return;
+    if (!data.isPlaying) return;
+    if (data.currentTime <= (initialTime || 0) + 0.3) return;
+
+    fsAppliedRef.current = true;
+    sessionStorage.removeItem('kvideo-pending-fullscreen');
+
+    if (isIOS) {
+      const v = refs.videoRef.current as (HTMLVideoElement & {
+        webkitEnterFullscreen?: () => void;
+      }) | null;
+      if (v && typeof v.webkitEnterFullscreen === 'function') {
+        try { v.webkitEnterFullscreen(); } catch { /* ignore */ }
+      }
+    } else {
+      const c = refs.containerRef.current as (HTMLDivElement & {
+        webkitRequestFullscreen?: () => Promise<void> | void;
+      }) | null;
+      const fn = c?.requestFullscreen ?? c?.webkitRequestFullscreen;
+      if (c && fn) {
+        try {
+          const p = fn.call(c);
+          if (p && typeof (p as Promise<void>).then === 'function') {
+            (p as Promise<void>).catch(() => { /* ignore */ });
+          }
+        } catch { /* ignore */ }
+      }
+    }
+  }, [isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef, refs.containerRef]);
+
+  // Sync UI fullscreen state with browser fullscreen state on mount.
+  // HistoryItem can call requestFullscreen() before SPA navigation, so
+  // when the player mounts we may already be in native fullscreen
+  // without ever calling enter*Fullscreen() ourselves. Reflect that
+  // in the state machine so controls render correctly.
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const fsEl =
+      document.fullscreenElement ||
+      (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+    if (fsEl && data.fullscreenMode === 'none') {
+      actions.setFullscreenMode('native');
+      actions.setIsFullscreen(true);
+    }
+    // Listen for changes so we stay in sync if browser exits fullscreen.
+    const handleFsChange = () => {
+      const el =
+        document.fullscreenElement ||
+        (document as unknown as { webkitFullscreenElement?: Element }).webkitFullscreenElement;
+      if (!el) {
+        actions.setFullscreenMode('none');
+        actions.setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Initialize HLS Player
   useHlsPlayer({
     videoRef: refs.videoRef,
@@ -290,6 +388,10 @@ export function DesktopVideoPlayer({
     handleVideoError,
   } = logic;
 
+  // Apply video rotation styles
+  const videoContainerStyle = isMobile ? videoRotation.getContainerStyle() : {};
+  const videoElementStyle = isMobile ? videoRotation.getVideoStyle() : {};
+
   const cycleWebFullscreenSize = React.useCallback(() => {
     setWebFullscreenSize((current) => {
       const currentIndex = WEB_FULLSCREEN_SIZE_ORDER.indexOf(current);
@@ -365,11 +467,20 @@ export function DesktopVideoPlayer({
         {/* Clipping Wrapper for video and overlays - Restores the 'Liquid Glass' rounded look */}
         <div className={`absolute inset-0 overflow-hidden pointer-events-none ${data.fullscreenMode === 'window' ? 'rounded-none' : 'rounded-none sm:rounded-[var(--radius-2xl)]'
           }`}>
-          <div className="absolute inset-0 pointer-events-auto">
+          <div className="absolute inset-0 pointer-events-auto flex items-center justify-center">
+          {/* Video Rotation Wrapper */}
+          <div
+            style={{
+              ...videoContainerStyle,
+              transition: 'transform 0.3s ease-in-out',
+            }}
+            className={isMobile && videoRotation.rotation % 180 !== 0 ? '' : 'w-full h-full'}
+          >
           {/* Video Element */}
           <video
             ref={videoRef}
             className="w-full h-full object-contain"
+            style={videoElementStyle}
             poster={poster}
             x-webkit-airplay="allow"
             playsInline={true} // Crucial for iOS custom fullscreen to work without native player taking over
@@ -388,6 +499,7 @@ export function DesktopVideoPlayer({
             onTouchStart={isMobile ? handleTap : undefined}
             {...LEGACY_INLINE_VIDEO_PROPS} // Legacy iOS support
           />
+          </div>
 
           {/* Danmaku Canvas */}
           {danmakuEnabled && danmakuComments.length > 0 && (
@@ -460,6 +572,7 @@ export function DesktopVideoPlayer({
               data={data}
               logic={logic}
               refs={refs}
+              videoRotation={isMobile ? videoRotation : undefined}
             />
           </div>
         </div>

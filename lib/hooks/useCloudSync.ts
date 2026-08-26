@@ -3,6 +3,7 @@ import { useHistoryStore, usePremiumHistoryStore } from '@/lib/store/history-sto
 import { useFavoritesStore, usePremiumFavoritesStore } from '@/lib/store/favorites-store';
 import { keepRenderableFavorites, keepRenderableHistory } from '@/lib/utils/sync-records';
 import { getProfileId } from '@/lib/store/auth-store';
+import { encryptPayload, decryptPayload, hasSyncKey } from '@/lib/utils/sync-crypto';
 
 export function useCloudSync(isPremium = false) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -13,22 +14,31 @@ export function useCloudSync(isPremium = false) {
   const pullFromCloud = useCallback(async () => {
     const profileId = getProfileId();
     if (!profileId) return;
+    if (!(await hasSyncKey())) return;
 
     setIsSyncing(true);
     try {
       const response = await fetch('/api/user/sync');
       const result = await response.json();
 
-      if (result.success && result.data) {
-        const history = keepRenderableHistory(result.data.history);
-        const favorites = keepRenderableFavorites(result.data.favorites);
+      if (!result.success || !result.data) return;
 
-        if (history.length > 0) {
-          historyStore.getState().importHistory(history);
-        }
-        if (favorites.length > 0) {
-          favoritesStore.getState().importFavorites(favorites);
-        }
+      const envelope = result.data as { encrypted?: string };
+      if (!envelope.encrypted) return;
+
+      const plaintext = await decryptPayload(envelope.encrypted);
+      if (!plaintext) return;
+
+      const data = JSON.parse(plaintext) as { history?: unknown; favorites?: unknown };
+
+      const history = keepRenderableHistory(data.history);
+      const favorites = keepRenderableFavorites(data.favorites);
+
+      if (history.length > 0) {
+        historyStore.getState().importHistory(history);
+      }
+      if (favorites.length > 0) {
+        favoritesStore.getState().importFavorites(favorites);
       }
     } catch (error) {
       console.error('Failed to pull from cloud:', error);
@@ -40,21 +50,22 @@ export function useCloudSync(isPremium = false) {
   const pushToCloud = useCallback(async () => {
     const profileId = getProfileId();
     if (!profileId) return;
+    if (!(await hasSyncKey())) return;
 
     setIsSyncing(true);
     try {
       const currentHistory = historyStore.getState().viewingHistory;
       const currentFavorites = favoritesStore.getState().favorites;
 
+      const encrypted = await encryptPayload(
+        JSON.stringify({ history: currentHistory, favorites: currentFavorites })
+      );
+      if (!encrypted) return;
+
       await fetch('/api/user/sync', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          history: currentHistory,
-          favorites: currentFavorites
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ encrypted }),
       });
     } catch (error) {
       console.error('Failed to push to cloud:', error);

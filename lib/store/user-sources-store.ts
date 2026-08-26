@@ -113,4 +113,8 @@ export const userSourcesStore = {
     const state = getState();
     saveState({ ...state, activeDanmakuApiId: id });
   },
+
+  setState(state: Partial<UserSourcesState>): void {
+    saveState({ ...getState(), ...state });
+  },
 };

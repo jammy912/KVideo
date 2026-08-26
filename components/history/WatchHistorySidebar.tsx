@@ -15,7 +15,13 @@ import { HistoryFooter } from './HistoryFooter';
 import { trapFocus } from '@/lib/accessibility/focus-management';
 import { useFloatingButtonPosition } from '@/lib/hooks/useFloatingButtonPosition';
 
-export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean }) {
+export function WatchHistorySidebar({
+  isPremium = false,
+  autoOpenIfHasHistory = false,
+}: {
+  isPremium?: boolean;
+  autoOpenIfHasHistory?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -25,6 +31,29 @@ export function WatchHistorySidebar({ isPremium = false }: { isPremium?: boolean
   const { viewingHistory, removeFromHistory, clearHistory } = useHistory(isPremium);
   const sidebarRef = useRef<HTMLElement>(null);
   const cleanupFocusTrapRef = useRef<(() => void) | null>(null);
+  const autoOpenedRef = useRef(false);
+
+  // Auto-open once per browser tab when user has watch history.
+  // Covers both fresh login and "remembered password" paths since the gate
+  // is per-tab (sessionStorage). After the user closes the sidebar (or opens
+  // a new tab) it stays closed until next tab.
+  useEffect(() => {
+    if (!autoOpenIfHasHistory) return;
+    if (autoOpenedRef.current) return;
+    if (typeof window === 'undefined') return;
+    if (sessionStorage.getItem('kvideo-history-auto-opened') === '1') return;
+    if (viewingHistory.length === 0) return;
+    autoOpenedRef.current = true;
+    sessionStorage.setItem('kvideo-history-auto-opened', '1');
+    setIsOpen(true);
+  }, [autoOpenIfHasHistory, viewingHistory.length]);
+
+  // Close when an item is clicked (HistoryItem dispatches this before nav).
+  useEffect(() => {
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('kvideo-close-history-sidebar', handleClose);
+    return () => window.removeEventListener('kvideo-close-history-sidebar', handleClose);
+  }, []);
   const {
     floatingStyle,
     onPointerDown,

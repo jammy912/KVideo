@@ -85,7 +85,7 @@ function HomePage() {
       </main>
 
       {/* Favorites Sidebar - Left */}
-      <FavoritesSidebar />
+      <FavoritesSidebar autoOpenHistoryIfHasItems />
     </div>
   );
 }

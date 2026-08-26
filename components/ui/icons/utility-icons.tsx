@@ -190,6 +190,16 @@ export const UtilityIcons = {
         </svg>
     ),
 
+    RotateScreen: ({ className = "", size = 24 }: IconProps) => (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z" />
+            <path d="M14 3v5h5" />
+            <path d="M12 18.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z" />
+            <path d="M12 14v-2" />
+            <path d="M12 18.5v2" />
+        </svg>
+    ),
+
     ExternalLink: ({ className = "", size = 24 }: IconProps) => (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

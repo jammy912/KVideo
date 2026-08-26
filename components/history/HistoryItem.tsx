@@ -4,6 +4,7 @@
  */
 
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/ui/Icon';
 import { formatTime, formatDate } from '@/lib/utils/format-utils';
 import { PosterImage } from './PosterImage';
@@ -19,6 +20,8 @@ interface HistoryItemProps {
 }
 
 export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemProps) {
+  const router = useRouter();
+
   const getVideoUrl = (): string => {
     const params = new URLSearchParams({
       id: item.videoId.toString(),
@@ -52,6 +55,23 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
       window.open(getVideoUrl(), '_blank');
       return;
     }
+
+    // Cross-browser fullscreen-on-history-click is unreliable when the
+    // request is followed by navigation. Instead drop a flag and let the
+    // player itself enter fullscreen once playback is stable. Browsers
+    // tend to be more lenient about fullscreen on a video that is
+    // actively playing than about fullscreen-then-navigate.
+    event.preventDefault();
+    try {
+      sessionStorage.setItem('kvideo-pending-fullscreen', '1');
+    } catch { /* ignore */ }
+
+    // Tell the sidebar to close before we navigate, so the home page
+    // (which stays mounted across SPA navigation in some cases, and on
+    // back-navigation always) doesn't keep the panel hanging open.
+    window.dispatchEvent(new CustomEvent('kvideo-close-history-sidebar'));
+
+    router.push(getVideoUrl());
   };
 
   const progress = (item.playbackPosition / item.duration) * 100;
@@ -63,14 +83,8 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
     <div className="group bg-[color-mix(in_srgb,var(--glass-bg)_50%,transparent)] rounded-[var(--radius-2xl)] p-3 hover:bg-[color-mix(in_srgb,var(--accent-color)_10%,transparent)] transition-all border border-transparent hover:border-[var(--glass-border)]">
       <a
         href={getVideoUrl()}
-        onClick={(e) => {
-          e.preventDefault();
-          handleClick(e as any);
-          if (!e.ctrlKey && !e.metaKey) {
-            window.location.href = getVideoUrl();
-          }
-        }}
-        onAuxClick={(e) => handleClick(e as any)}
+        onClick={(e) => handleClick(e as React.MouseEvent)}
+        onAuxClick={(e) => handleClick(e as unknown as React.MouseEvent)}
         className="block"
       >
         <div className="flex gap-3">
