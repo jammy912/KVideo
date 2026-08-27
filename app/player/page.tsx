@@ -171,6 +171,17 @@ function PlayerContent() {
       }
     }
 
+    // A videoId is only meaningful within the source it came from: id 143401
+    // on source A and id 143401 on source B are unrelated videos. Drop any
+    // cached entry whose id was recorded against a different source than the
+    // one we are actually playing, otherwise switching source plays the
+    // current video's id against another site and lands on the wrong film.
+    if (source && videoId) {
+      sources = sources.filter(
+        (item) => item.source !== source || String(item.id) === String(videoId)
+      );
+    }
+
     if (discoveredSources.length > 0) {
       for (const ds of discoveredSources) {
         if (!sources.find((item) => item.source === ds.source)) {

@@ -59,6 +59,35 @@ export function generateShowIdentifier(title: string): string {
  *           title stored as `title:媽咪` would never match the freshly
  *           computed `title:妈咪`.
  */
+/**
+ * Drop sourceMap pairings that cannot be true. A videoId is namespaced by the
+ * source it came from, so if several sources map to the *same* id, at most one
+ * of them is genuine — the rest were fabricated by injecting the current
+ * videoId against another source's name. Keep the entry for the record's own
+ * source and discard the duplicates, which otherwise make source-switching
+ * open a different film under the same id.
+ */
+function pruneSourceMap(item: VideoHistoryItem): VideoHistoryItem {
+  if (!item.sourceMap) return item;
+
+  const byId = new Map<string, string[]>();
+  for (const [src, id] of Object.entries(item.sourceMap)) {
+    const key = String(id);
+    byId.set(key, [...(byId.get(key) || []), src]);
+  }
+
+  const pruned: Record<string, string | number> = {};
+  for (const [src, id] of Object.entries(item.sourceMap)) {
+    const sharing = byId.get(String(id)) || [];
+    // Unambiguous id, or the one source we know really used it.
+    if (sharing.length === 1 || src === item.source) {
+      pruned[src] = id;
+    }
+  }
+
+  return { ...item, sourceMap: pruned };
+}
+
 function migrateHistory(history: VideoHistoryItem[]): VideoHistoryItem[] {
   const merged = new Map<string, VideoHistoryItem>();
 
@@ -132,11 +161,19 @@ const createHistoryStore = (name: string) =>
 
             if (existingIndex !== -1) {
               const existing = state.viewingHistory[existingIndex];
-              // Merge sourceMap
-              const mergedSourceMap = {
-                ...(existing.sourceMap || { [existing.source]: existing.videoId }),
-                [source]: videoId,
-              };
+              // Merge sourceMap. A videoId is namespaced by its source, so a
+              // single id must never be claimed by more than one source: if
+              // another source is already recorded against the id we are
+              // writing, that pairing was fabricated (not actually played)
+              // and would make source-switching open the wrong video.
+              const previousMap =
+                existing.sourceMap || { [existing.source]: existing.videoId };
+              const mergedSourceMap = Object.fromEntries(
+                Object.entries(previousMap).filter(
+                  ([src, id]) => src === source || String(id) !== String(videoId)
+                )
+              );
+              mergedSourceMap[source] = videoId;
 
               // Update existing item and move to top
               const updatedItem: VideoHistoryItem = {
@@ -232,18 +269,31 @@ const createHistoryStore = (name: string) =>
       }),
       {
         name,
-        version: 3,
+        version: 4,
         migrate: (persistedState: any, version: number) => {
+          const oldHistory: VideoHistoryItem[] = persistedState?.viewingHistory || [];
+
           if (version < 3) {
             // v1 -> v2: entries lacked a showIdentifier.
             // v2 -> v3: showIdentifier is now Simplified-normalised, so the
             // persisted ones must be recomputed or they will never match.
-            const oldHistory = persistedState?.viewingHistory || [];
+            // migrateHistory already prunes as part of the rebuild below.
             return {
               ...persistedState,
-              viewingHistory: migrateHistory(oldHistory),
+              viewingHistory: migrateHistory(oldHistory).map(pruneSourceMap),
             };
           }
+
+          if (version < 4) {
+            // v3 -> v4: strip sourceMap entries where several sources claim
+            // the same videoId — those pairings were never verified and made
+            // source-switching play the wrong film.
+            return {
+              ...persistedState,
+              viewingHistory: oldHistory.map(pruneSourceMap),
+            };
+          }
+
           return persistedState as HistoryStore;
         },
       }
