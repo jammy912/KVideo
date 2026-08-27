@@ -12,7 +12,7 @@ import type { VideoResolutionInfo } from '@/components/player/hooks/useVideoReso
 import { useResolutionProbe } from '@/lib/hooks/useResolutionProbe';
 import { setCachedResolution } from '@/lib/player/resolution-cache';
 import { useVideoPlayer } from '@/lib/hooks/useVideoPlayer';
-import { useHistory } from '@/lib/store/history-store';
+import { useHistory, generateShowIdentifier } from '@/lib/store/history-store';
 import { FavoritesSidebar } from '@/components/favorites/FavoritesSidebar';
 import { FavoriteButton } from '@/components/favorites/FavoriteButton';
 import { PlayerNavbar } from '@/components/player/PlayerNavbar';
@@ -48,17 +48,18 @@ function PlayerContent() {
   const missingRequiredParams = !videoId || !source;
 
   // Look up persisted rotation from history (matched by normalized title).
+  // Must use the store's own identifier function so the normalisation rules
+  // (including Traditional -> Simplified) stay in sync with what was written.
   const historyRotation = useMemo<0 | 90 | 180 | 270>(() => {
     if (!title) return 0;
-    const normalized = `title:${title.toLowerCase().trim()}`;
+    const normalized = generateShowIdentifier(title);
     const entry = viewingHistory.find((h) => h.showIdentifier === normalized);
     return entry?.rotation ?? 0;
   }, [title, viewingHistory]);
 
   const handleRotationChange = useCallback((rotation: 0 | 90 | 180 | 270) => {
     if (!title) return;
-    const normalized = `title:${title.toLowerCase().trim()}`;
-    updateRotation(normalized, rotation);
+    updateRotation(generateShowIdentifier(title), rotation);
   }, [title, updateRotation]);
 
   // Track settings - use mode-specific store
@@ -343,8 +344,14 @@ function PlayerContent() {
         index: idx,
       })) || [];
 
+      // Take the id from the same payload as the title. `videoId` comes from
+      // the URL while `vod_name` comes from the fetched detail; during SPA
+      // navigation those two can briefly disagree, which used to persist a
+      // record carrying the *previous* video's id alongside the new title.
+      const resolvedVideoId = videoData.vod_id ?? videoId;
+
       addToHistory(
-        videoId,
+        resolvedVideoId,
         videoData.vod_name || title || '未知视频',
         playUrl,
         currentEpisode,

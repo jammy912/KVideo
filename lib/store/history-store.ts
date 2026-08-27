@@ -44,12 +44,20 @@ interface HistoryStore extends HistoryState, HistoryActions { }
  * differ only by script (e.g. webhtv's Android client vs. this app's
  * source APIs) collapse to the same identifier instead of duplicating.
  */
-function generateShowIdentifier(title: string): string {
+export function generateShowIdentifier(title: string): string {
   return `title:${traditionalToSimplified(title.toLowerCase().trim())}`;
 }
 
 /**
- * Migrate v1 history entries to v2 (merge entries with same title)
+ * Recompute showIdentifier for every entry and merge those that collapse to
+ * the same one.
+ *
+ * v1 -> v2: entries had no showIdentifier / one per source.
+ * v2 -> v3: generateShowIdentifier gained Traditional -> Simplified
+ *           normalisation, so identifiers persisted under v2 no longer match
+ *           what the current code computes. Without this pass, a Traditional
+ *           title stored as `title:媽咪` would never match the freshly
+ *           computed `title:妈咪`.
  */
 function migrateHistory(history: VideoHistoryItem[]): VideoHistoryItem[] {
   const merged = new Map<string, VideoHistoryItem>();
@@ -224,10 +232,12 @@ const createHistoryStore = (name: string) =>
       }),
       {
         name,
-        version: 2,
+        version: 3,
         migrate: (persistedState: any, version: number) => {
-          if (version < 2) {
-            // Migrate from v1: merge entries with same normalized title
+          if (version < 3) {
+            // v1 -> v2: entries lacked a showIdentifier.
+            // v2 -> v3: showIdentifier is now Simplified-normalised, so the
+            // persisted ones must be recomputed or they will never match.
             const oldHistory = persistedState?.viewingHistory || [];
             return {
               ...persistedState,
