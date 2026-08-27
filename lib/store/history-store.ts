@@ -8,6 +8,7 @@ import { persist } from 'zustand/middleware';
 import type { VideoHistoryItem, Episode } from '@/lib/types';
 import { clearSegmentsForUrl, clearAllCache } from '@/lib/utils/cacheManager';
 import { profiledKey } from '@/lib/utils/profile-storage';
+import { traditionalToSimplified } from '@/lib/utils/chinese-convert';
 
 const MAX_HISTORY_ITEMS = 50;
 
@@ -38,10 +39,13 @@ interface HistoryActions {
 interface HistoryStore extends HistoryState, HistoryActions { }
 
 /**
- * Generate unique identifier for deduplication (source-agnostic)
+ * Generate unique identifier for deduplication (source-agnostic).
+ * Normalizes Traditional -> Simplified so records from sources that
+ * differ only by script (e.g. webhtv's Android client vs. this app's
+ * source APIs) collapse to the same identifier instead of duplicating.
  */
 function generateShowIdentifier(title: string): string {
-  return `title:${title.toLowerCase().trim()}`;
+  return `title:${traditionalToSimplified(title.toLowerCase().trim())}`;
 }
 
 /**
