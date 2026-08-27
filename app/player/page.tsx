@@ -20,6 +20,7 @@ import { settingsStore } from '@/lib/store/settings-store';
 import { premiumModeSettingsStore } from '@/lib/store/premium-mode-settings';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { getSourceName } from '@/lib/utils/source-names';
+import { discoveredSourcesFor, videoDiscoveryKey } from '@/lib/player/source-list-utils';
 import { retrieveGroupedSources, storeGroupedSources } from '@/lib/utils/grouped-sources-cache';
 
 type PlayerViewportMode = 'standard' | 'wide' | 'cinema';
@@ -112,8 +113,14 @@ function PlayerContent() {
   }, [missingRequiredParams, router]);
 
   const [pendingFallback, setPendingFallback] = useState(false);
-  const [discoveredSources, setDiscoveredSources] = useState<SourceInfo[]>([]);
+  // Tagged with the video the sources were discovered for. This page is reused
+  // across SPA navigation, so untagged results leaked from one video into the
+  // next and every history entry ended up showing the same station list.
+  const [discovered, setDiscovered] = useState<{ forVideo: string; sources: SourceInfo[] } | null>(null);
   const groupedSourcesRef = useRef<SourceInfo[]>([]);
+
+  const discoveryKey = videoDiscoveryKey(source, videoId);
+  const discoveredSources = discoveredSourcesFor(discovered, discoveryKey);
 
   const handleSourceUnavailable = useCallback(() => {
     const groupedSources = groupedSourcesRef.current;
@@ -208,9 +215,12 @@ function PlayerContent() {
   }, [discoveredSources, handleSourceUnavailable, pendingFallback]);
 
   // Background fetch alternative sources when none provided or when existing ones lack full info
-  const fetchedSourcesRef = useRef(false);
+  // Remembers which video we already ran discovery for, not merely *that* we
+  // ran it: a plain boolean never reset on SPA navigation, so every video
+  // after the first skipped discovery and reused the previous results.
+  const fetchedSourcesRef = useRef<string | null>(null);
   useEffect(() => {
-    if (fetchedSourcesRef.current || !title) return;
+    if (fetchedSourcesRef.current === discoveryKey || !title) return;
 
     // Check if existing grouped sources already have full info (pic + latency)
     let existingSources: SourceInfo[] = [];
@@ -225,7 +235,7 @@ function PlayerContent() {
       existingSources.every(s => s.pic || s.latency !== undefined);
     if (hasFullInfo) return;
 
-    fetchedSourcesRef.current = true;
+    fetchedSourcesRef.current = discoveryKey;
 
     const settings = settingsStore.getSettings();
     const sourcesForMode = isPremium ? settings.premiumSources : settings.sources;
@@ -287,8 +297,9 @@ function PlayerContent() {
                     typeName: match.type_name,
                     remarks: match.vod_remarks,
                   });
-                  // Update state incrementally
-                  setDiscoveredSources([...found]);
+                  // Update state incrementally, tagged with the video these
+                  // results belong to so a later video cannot inherit them.
+                  setDiscovered({ forVideo: discoveryKey, sources: [...found] });
                 }
               }
             } catch { /* ignore parse errors */ }
@@ -300,7 +311,7 @@ function PlayerContent() {
     })();
 
     return () => controller.abort();
-  }, [groupedSourcesParam, gsKey, isPremium, pendingFallback, source, title]);
+  }, [discoveryKey, groupedSourcesParam, gsKey, isPremium, pendingFallback, source, title]);
 
   // Track current source for switching
   const [currentSourceId, setCurrentSourceId] = useState(source);

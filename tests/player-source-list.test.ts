@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  discoveredSourcesFor,
   getSourceResolutionBadge,
   shouldExpandForCurrentSource,
+  videoDiscoveryKey,
 } from '@/lib/player/source-list-utils';
 import { shouldReuseCachedResolution } from '@/lib/player/resolution-cache';
 import { extractNumericResolutionLabel } from '@/lib/utils/video';
@@ -19,6 +21,34 @@ test('shouldExpandForCurrentSource detects hidden active sources', () => {
 
   assert.equal(shouldExpandForCurrentSource(sources, 's6', 5), true);
   assert.equal(shouldExpandForCurrentSource(sources, 's3', 5), false);
+});
+
+test('discovered sources never leak from one video to the next', () => {
+  const videoA = videoDiscoveryKey('siteA', '111');
+  const videoB = videoDiscoveryKey('siteB', '222');
+
+  const discovered = {
+    forVideo: videoA,
+    sources: [{ source: 'siteX', id: '900' }, { source: 'siteY', id: '901' }],
+  };
+
+  // Still on the video the discovery ran for: results apply.
+  assert.deepEqual(discoveredSourcesFor(discovered, videoA), discovered.sources);
+
+  // Navigated to a different video (SPA, page not remounted): the previous
+  // video's stations must NOT be inherited, otherwise every history entry
+  // ends up showing the first-clicked video's source list.
+  assert.deepEqual(discoveredSourcesFor(discovered, videoB), []);
+
+  assert.deepEqual(discoveredSourcesFor(null, videoA), []);
+});
+
+test('videoDiscoveryKey distinguishes same id on different sources', () => {
+  // id 143401 on two stations are unrelated videos.
+  assert.notEqual(videoDiscoveryKey('siteA', '143401'), videoDiscoveryKey('siteB', '143401'));
+  assert.equal(videoDiscoveryKey('siteA', '143401'), videoDiscoveryKey('siteA', '143401'));
+  // Missing params must not collide with a real video.
+  assert.notEqual(videoDiscoveryKey(null, null), videoDiscoveryKey('siteA', '1'));
 });
 
 test('getSourceResolutionBadge prefers current actual resolution, then probed, then cached, then remarks', () => {
