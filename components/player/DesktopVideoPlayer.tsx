@@ -225,6 +225,8 @@ export function DesktopVideoPlayer({
   });
 
   // Persist rotation back to history when user changes it (mobile only).
+  // Safe as a plain ref: VideoPlayer carries a key on the video identity, so
+  // this whole subtree remounts when navigating to a different video.
   const lastReportedRotationRef = React.useRef(initialRotation);
   React.useEffect(() => {
     if (!isMobile) return;
@@ -239,16 +241,19 @@ export function DesktopVideoPlayer({
   // initialTime + 0.3s) so the call lands after the seek completes.
   // - iOS Safari: video.webkitEnterFullscreen() (no Element FS API)
   // - Others: container.requestFullscreen()
-  const fsAppliedRef = React.useRef(false);
+  // Keyed by src rather than a bare boolean: the component is reused across
+  // SPA navigation, so a latched `true` would stop auto-fullscreen working on
+  // every history click after the first one in a session.
+  const fsAppliedRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (fsAppliedRef.current) return;
+    if (fsAppliedRef.current === src) return;
     if (typeof window === 'undefined') return;
     if (sessionStorage.getItem('kvideo-pending-fullscreen') !== '1') return;
     if (data.duration <= 0) return;
     if (!data.isPlaying) return;
     if (data.currentTime <= (initialTime || 0) + 0.3) return;
 
-    fsAppliedRef.current = true;
+    fsAppliedRef.current = src;
     sessionStorage.removeItem('kvideo-pending-fullscreen');
 
     if (isIOS) {
@@ -272,7 +277,7 @@ export function DesktopVideoPlayer({
         } catch { /* ignore */ }
       }
     }
-  }, [isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef, refs.containerRef]);
+  }, [src, isIOS, data.duration, data.isPlaying, data.currentTime, initialTime, refs.videoRef, refs.containerRef]);
 
   // Sync UI fullscreen state with browser fullscreen state on mount.
   // HistoryItem can call requestFullscreen() before SPA navigation, so
