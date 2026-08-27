@@ -4,6 +4,7 @@ import { binaryInsertVideos } from '@/lib/utils/sorted-insert';
 import { processSearchStream } from '@/lib/utils/search-stream';
 import type { SortOption } from '@/lib/store/settings-store';
 import { settingsStore } from '@/lib/store/settings-store';
+import { traditionalToSimplified } from '@/lib/utils/chinese-convert';
 import { useSearchState } from './useSearchState';
 
 type SearchState = ReturnType<typeof useSearchState>;
@@ -35,8 +36,13 @@ export function useSearchAction({ state, onCacheUpdate, onUrlUpdate }: UseSearch
     // Keep track of the last search params so loadMore can re-use them
     const lastSearchParamsRef = useRef<{ query: string; sources: any[]; sortBy: SortOption } | null>(null);
 
-    const performSearch = useCallback(async (searchQuery: string, sources: any[] = [], sortBy: SortOption = 'default') => {
-        if (!searchQuery.trim()) return;
+    const performSearch = useCallback(async (rawSearchQuery: string, sources: any[] = [], sortBy: SortOption = 'default') => {
+        if (!rawSearchQuery.trim()) return;
+
+        // Convert Traditional Chinese to Simplified up front so the query sent
+        // to the backend and the query used for client-side relevance matching
+        // stay in sync (most source titles are Simplified Chinese).
+        const searchQuery = traditionalToSimplified(rawSearchQuery);
 
         // Resolve sources if not provided
         let targetSources = sources;
