@@ -334,6 +334,15 @@ function PlayerContent() {
     }
   }, [currentEpisode, source, videoId]);
 
+  // The id and title that identify the record we write to history. Both must
+  // come from the *same* payload: `videoId`/`title` come from the URL while
+  // `vod_id`/`vod_name` come from the fetched detail, and during SPA
+  // navigation the two sources disagree for a moment. Deriving them
+  // independently is what used to persist one video's id under another
+  // video's title. Every history read/write below uses this pair.
+  const resolvedVideoId = videoData?.vod_id ?? videoId ?? undefined;
+  const resolvedTitle = videoData?.vod_name || title || '未知视频';
+
   // Add initial history entry when video data is loaded
   useEffect(() => {
     if (videoData && playUrl && videoId && source) {
@@ -344,14 +353,8 @@ function PlayerContent() {
         index: idx,
       })) || [];
 
-      // Take the id from the same payload as the title. `videoId` comes from
-      // the URL while `vod_name` comes from the fetched detail; during SPA
-      // navigation those two can briefly disagree, which used to persist a
-      // record carrying the *previous* video's id alongside the new title.
-      const resolvedVideoId = videoData.vod_id ?? videoId;
-
       addToHistory(
-        resolvedVideoId,
+        videoData.vod_id ?? videoId,
         videoData.vod_name || title || '未知视频',
         playUrl,
         currentEpisode,
@@ -470,14 +473,14 @@ function PlayerContent() {
               <div className="sm:mx-0">
                 <VideoPlayer
                   playUrl={playUrl}
-                  videoId={videoId || undefined}
+                  videoId={resolvedVideoId}
                   currentEpisode={currentEpisode}
                   onBack={() => router.back()}
                   totalEpisodes={videoData?.episodes?.length || 0}
                   onNextEpisode={handleNextEpisode}
                   isReversed={isReversed}
                   isPremium={isPremium}
-                  videoTitle={videoData?.vod_name || title || ''}
+                  videoTitle={resolvedTitle}
                   episodeName={videoData?.episodes?.[currentEpisode]?.name || ''}
                   externalTimeRef={playerTimeRef}
                   onResolutionDetected={handleResolutionDetected}

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useHistory } from '@/lib/store/history-store';
+import { useHistory, generateShowIdentifier } from '@/lib/store/history-store';
 import { CustomVideoPlayer } from './CustomVideoPlayer';
 import { VideoPlayerError } from './VideoPlayerError';
 import { VideoPlayerEmpty } from './VideoPlayerEmpty';
@@ -64,9 +64,14 @@ export function VideoPlayer({
   const { viewingHistory, addToHistory } = useHistory(isPremium);
   const searchParams = useSearchParams();
 
-  // Get video metadata from URL params
   const source = searchParams.get('source') || '';
-  const title = searchParams.get('title') || '未知视频';
+
+  // Identify the video by the id/title pair the parent resolved, NOT by
+  // re-reading the URL here. `videoId` and the URL's `title` update at
+  // different times during SPA navigation (this component is reused, not
+  // remounted), so deriving the title independently let the 5s throttled
+  // save below write the previous video's id under the new video's title.
+  const title = videoTitle || '未知视频';
 
   // Get saved progress for this video
   const getSavedProgress = () => {
@@ -79,31 +84,35 @@ export function VideoPlayer({
 
     if (!videoId) return 0;
 
-    // Match by normalized title + episode index (source-agnostic)
-    const normalizedTitle = title.toLowerCase().trim();
+    // Match by normalized title + episode index (source-agnostic). Use the
+    // store's own identifier function so this stays in step with how records
+    // are keyed on write — a local copy of the algorithm silently diverges.
+    const showIdentifier = generateShowIdentifier(title);
     const historyItem = viewingHistory.find(item =>
-      item.title.toLowerCase().trim() === normalizedTitle &&
+      item.showIdentifier === showIdentifier &&
       item.episodeIndex === currentEpisode
     );
 
     return historyItem ? historyItem.playbackPosition : 0;
   };
 
+  // Snapshot the identity of what is currently playing as one unit. The
+  // cleanup flush() below runs *after* props change on SPA navigation, so a
+  // closure over the individual values could pair a stale id with a fresh
+  // title. Reading a single ref guarantees every field of a written record
+  // describes the same video.
+  const identityRef = useRef({ videoId, title, playUrl, currentEpisode, source });
+  useEffect(() => {
+    identityRef.current = { videoId, title, playUrl, currentEpisode, source };
+  }, [videoId, title, playUrl, currentEpisode, source]);
+
   // Save progress function (used by throttle and beforeunload)
   const saveProgress = useCallback((currentTime: number, duration: number) => {
-    if (!videoId || !playUrl || duration === 0 || currentTime <= 1) return;
-    addToHistory(
-      videoId,
-      title,
-      playUrl,
-      currentEpisode,
-      source,
-      currentTime,
-      duration,
-      undefined,
-      []
-    );
-  }, [videoId, playUrl, title, currentEpisode, source, addToHistory]);
+    const { videoId: id, title: t, playUrl: url, currentEpisode: ep, source: src } =
+      identityRef.current;
+    if (!id || !url || duration === 0 || currentTime <= 1) return;
+    addToHistory(id, t, url, ep, src, currentTime, duration, undefined, []);
+  }, [addToHistory]);
 
   // Handle time updates and save progress (throttled to every 5 seconds)
   const handleTimeUpdate = useCallback((currentTime: number, duration: number) => {
@@ -121,7 +130,7 @@ export function VideoPlayer({
       lastSaveTimeRef.current = now;
       saveProgress(currentTime, duration);
     }
-  }, [videoId, playUrl, saveProgress]);
+  }, [videoId, playUrl, saveProgress, externalTimeRef]);
 
   // Save on page leave / refresh / iOS exit-fullscreen / SPA unmount.
   // iOS in webkitEnterFullscreen() can swallow the final timeupdate, so
