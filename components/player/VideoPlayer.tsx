@@ -245,7 +245,14 @@ export function VideoPlayer({
         />
       ) : (
         <CustomVideoPlayer
-          key={`${effectiveUseProxy ? 'proxy' : 'direct'}-${retryCount}-${source}`} // Remount when switching sources, modes, or retrying
+          // Remount when the video, source, proxy mode, or retry count
+          // changes. `playUrl` must be part of this: navigating from the
+          // history sidebar to a different video *on the same source* left
+          // the key unchanged, so the <video> element kept playing the old
+          // media even though the URL and every prop had already updated
+          // (opening the same link in a new tab worked, because that mounts
+          // fresh).
+          key={`${effectiveUseProxy ? 'proxy' : 'direct'}-${retryCount}-${source}-${playUrl}`}
           src={finalPlayUrl}
           onError={handleVideoError}
           onTimeUpdate={handleTimeUpdate}
