@@ -105,10 +105,9 @@ export function VideoPlayer({
   useEffect(() => {
     identityRef.current = { videoId, title, playUrl, currentEpisode, source };
     // Discard the previous video's playback position at the same moment the
-    // identity changes. This component is reused (not remounted) when the
-    // player navigates between videos, so without this the trackers still
-    // hold the old video's time and the cleanup flush() would write it
-    // against the NEW video's identity.
+    // identity changes. This component is reused across SPA navigation, so
+    // without this the trackers still hold the old video's time and the
+    // cleanup flush() would write it against the NEW video's identity.
     currentTimeRef.current = 0;
     durationRef.current = 0;
     lastSaveTimeRef.current = 0;
@@ -245,14 +244,7 @@ export function VideoPlayer({
         />
       ) : (
         <CustomVideoPlayer
-          // Remount when the video, source, proxy mode, or retry count
-          // changes. `playUrl` must be part of this: navigating from the
-          // history sidebar to a different video *on the same source* left
-          // the key unchanged, so the <video> element kept playing the old
-          // media even though the URL and every prop had already updated
-          // (opening the same link in a new tab worked, because that mounts
-          // fresh).
-          key={`${effectiveUseProxy ? 'proxy' : 'direct'}-${retryCount}-${source}-${playUrl}`}
+          key={`${effectiveUseProxy ? 'proxy' : 'direct'}-${retryCount}-${source}`} // Remount when switching sources, modes, or retrying
           src={finalPlayUrl}
           onError={handleVideoError}
           onTimeUpdate={handleTimeUpdate}

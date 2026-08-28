@@ -225,6 +225,8 @@ export function DesktopVideoPlayer({
   });
 
   // Persist rotation back to history when user changes it (mobile only).
+  // Safe as a plain ref: VideoPlayer carries a key on the video identity, so
+  // this whole subtree remounts when navigating to a different video.
   const lastReportedRotationRef = React.useRef(initialRotation);
   React.useEffect(() => {
     if (!isMobile) return;

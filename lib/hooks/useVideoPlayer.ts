@@ -96,8 +96,15 @@ export function useVideoPlayer(
       const data = await response.json();
       const sourceUnavailable =
         response.status === 404 ||
+        // 5xx / 408 / 429 mean the upstream site failed or timed out, which is
+        // just as unavailable as a 404 — treat it the same so the player falls
+        // back to another source instead of stranding the user on an error.
+        response.status >= 500 ||
+        response.status === 408 ||
+        response.status === 429 ||
         (response.status === 400 && typeof data?.error === 'string' && data.error.toLowerCase().includes('source')) ||
-        (typeof data?.error === 'string' && data.error.includes('视频源不可用'));
+        (typeof data?.error === 'string' && data.error.includes('视频源不可用')) ||
+        (typeof data?.error === 'string' && data.error.includes('Failed to fetch video detail'));
 
       if (!response.ok) {
         if (sourceUnavailable) {
