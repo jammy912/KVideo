@@ -4,7 +4,7 @@
  */
 
 import Image from 'next/image';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/ui/Icon';
 import { formatTime, formatDate } from '@/lib/utils/format-utils';
 import { PosterImage } from './PosterImage';
@@ -21,8 +21,6 @@ interface HistoryItemProps {
 
 export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   const getVideoUrl = (): string => {
     const params = new URLSearchParams({
@@ -73,16 +71,7 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
     // back-navigation always) doesn't keep the panel hanging open.
     window.dispatchEvent(new CustomEvent('kvideo-close-history-sidebar'));
 
-    // Clicking the entry for the video already open is a no-op for the router:
-    // the destination resolves to the current route + search params, so Next
-    // skips it entirely — no pushState, no re-render. Combined with the
-    // preventDefault() above (which stops the browser's own navigation), the
-    // click appeared to do nothing at all. There is nothing to navigate to
-    // here, so just close the sidebar and stay put.
-    const target = getVideoUrl();
-    if (target === `${pathname}?${searchParams.toString()}`) return;
-
-    router.push(target);
+    router.push(getVideoUrl());
   };
 
   const progress = (item.playbackPosition / item.duration) * 100;
