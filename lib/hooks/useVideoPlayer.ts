@@ -165,39 +165,18 @@ export function useVideoPlayer(
     return () => unsubscribe();
   }, [videoId, source, videoError, fetchVideoDetails]);
 
-  // Sync state from params if they change externally (e.g. back/forward
-  // navigation).
-  //
-  // Also acts as a recovery path: navigating between videos clears playUrl to
-  // '' and currentEpisode to 0 before refetching. If the incoming video's
-  // episodeParam is also 0 there is no index change, so restoring playUrl only
-  // when `index !== currentEpisode` left the player rendering nothing while the
-  // URL already showed the new video (looked like a frozen player; opening the
-  // same URL in a new tab worked because that is a fresh mount).
+  // Sync state from params if they change externally (e.g. back/forward navigation)
   useEffect(() => {
-    const episodes = videoData?.episodes;
-    if (!episodes || episodes.length === 0) return;
-
-    if (episodeParam !== null) {
+    if (videoData?.episodes && episodeParam !== null) {
       const index = parseInt(episodeParam, 10);
-      if (!isNaN(index) && index >= 0 && index < episodes.length) {
+      if (!isNaN(index) && index >= 0 && index < videoData.episodes.length) {
         if (index !== currentEpisode) {
           setCurrentEpisode(index);
-          setPlayUrl(episodes[index].url);
-        } else if (!playUrl) {
-          setPlayUrl(episodes[index].url);
+          setPlayUrl(videoData.episodes[index].url);
         }
-        return;
       }
     }
-
-    // No usable episodeParam: still make sure something is playable, otherwise
-    // a cleared playUrl never gets refilled.
-    if (!playUrl) {
-      const fallback = episodes[currentEpisode] ?? episodes[0];
-      if (fallback) setPlayUrl(fallback.url);
-    }
-  }, [episodeParam, videoData, currentEpisode, playUrl]);
+  }, [episodeParam, videoData, currentEpisode]);
 
   useEffect(() => {
     if (videoId && source) {
