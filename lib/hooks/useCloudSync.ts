@@ -4,6 +4,7 @@ import { useFavoritesStore, usePremiumFavoritesStore } from '@/lib/store/favorit
 import { keepRenderableFavorites, keepRenderableHistory } from '@/lib/utils/sync-records';
 import { getProfileId } from '@/lib/store/auth-store';
 import { encryptPayload, decryptPayload, hasSyncKey } from '@/lib/utils/sync-crypto';
+import { kvDebug } from '@/lib/utils/kv-debug'; // __KVDEBUG__ temporary
 
 export function useCloudSync(isPremium = false) {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -36,16 +37,13 @@ export function useCloudSync(isPremium = false) {
 
       if (history.length > 0) {
         // __KVDEBUG__ temporary: pull replaces the WHOLE local history.
-        if (typeof window !== 'undefined') {
-          const before = historyStore.getState().viewingHistory;
-          console.log('[KVDEBUG cloudPull]', JSON.stringify({
-            localCount: before.length,
-            cloudCount: history.length,
-            local: before.slice(0, 5).map((h) => `${h.videoId}/${h.source}/${h.title}`),
-            cloud: (history as typeof before).slice(0, 5)
-              .map((h) => `${h.videoId}/${h.source}/${h.title}`),
-          }));
-        }
+        const before = historyStore.getState().viewingHistory;
+        kvDebug('cloudPull', {
+          localCount: before.length,
+          cloudCount: history.length,
+          local: before.slice(0, 6).map((h) => `${h.videoId}/${h.source}/${h.title}`),
+          cloud: history.slice(0, 6).map((h) => `${h.videoId}/${h.source}/${h.title}`),
+        });
         historyStore.getState().importHistory(history);
       }
       if (favorites.length > 0) {
@@ -67,6 +65,13 @@ export function useCloudSync(isPremium = false) {
     try {
       const currentHistory = historyStore.getState().viewingHistory;
       const currentFavorites = favoritesStore.getState().favorites;
+
+      // __KVDEBUG__ temporary.
+      kvDebug('cloudPush', {
+        count: currentHistory.length,
+        items: currentHistory.slice(0, 6)
+          .map((h) => `${h.videoId}/${h.source}/${h.title}`),
+      });
 
       const encrypted = await encryptPayload(
         JSON.stringify({ history: currentHistory, favorites: currentFavorites })

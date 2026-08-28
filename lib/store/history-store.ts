@@ -9,6 +9,7 @@ import type { VideoHistoryItem, Episode } from '@/lib/types';
 import { clearSegmentsForUrl, clearAllCache } from '@/lib/utils/cacheManager';
 import { profiledKey } from '@/lib/utils/profile-storage';
 import { traditionalToSimplified } from '@/lib/utils/chinese-convert';
+import { kvDebug } from '@/lib/utils/kv-debug'; // __KVDEBUG__ temporary
 
 const MAX_HISTORY_ITEMS = 50;
 
@@ -123,15 +124,15 @@ const createHistoryStore = (name: string) =>
           const timestamp = Date.now();
 
           // __KVDEBUG__ temporary: diagnosing history records being overwritten.
-          if (typeof window !== 'undefined') {
-            const caller = new Error().stack?.split('\n').slice(2, 6)
+          // Recorded into a global buffer rather than console.log because
+          // next.config.ts strips console.* from production builds.
+          kvDebug('addToHistory', {
+            videoId, title, source, episodeIndex, showIdentifier,
+            url: String(url).slice(-45), pos: Math.round(playbackPosition),
+            caller: new Error().stack?.split('\n').slice(2, 6)
               .map((l) => l.trim().replace(/^at\s+/, '').split(/[\s(]/)[0])
-              .filter(Boolean).join(' < ');
-            console.log('[KVDEBUG addToHistory]', JSON.stringify({
-              videoId, title, source, episodeIndex, showIdentifier,
-              url: String(url).slice(-45), pos: Math.round(playbackPosition), caller,
-            }));
-          }
+              .filter(Boolean).join(' < '),
+          });
 
           set((state) => {
             // Check if item already exists (by normalized title)
@@ -145,15 +146,13 @@ const createHistoryStore = (name: string) =>
               const existing = state.viewingHistory[existingIndex];
 
               // __KVDEBUG__ temporary.
-              if (typeof window !== 'undefined') {
-                console.log('[KVDEBUG merge]', JSON.stringify({
-                  matchedIndex: existingIndex,
-                  existing: `${existing.videoId}/${existing.source}/${existing.title}`,
-                  incoming: `${videoId}/${source}/${title}`,
-                  idChanged: String(existing.videoId) !== String(videoId),
-                  srcChanged: existing.source !== source,
-                }));
-              }
+              kvDebug('merge', {
+                matchedIndex: existingIndex,
+                existing: `${existing.videoId}/${existing.source}/${existing.title}`,
+                incoming: `${videoId}/${source}/${title}`,
+                idChanged: String(existing.videoId) !== String(videoId),
+                srcChanged: existing.source !== source,
+              });
               // Merge sourceMap
               const mergedSourceMap = {
                 ...(existing.sourceMap || { [existing.source]: existing.videoId }),
