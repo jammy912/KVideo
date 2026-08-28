@@ -206,6 +206,26 @@ test('history item navigates with a full page load, not router.push', () => {
   );
 });
 
+test('player navbar navigates with full page loads, not client-side routing', () => {
+  // Client-side navigation (router.push AND next/link) is inert on the player
+  // page — verified in a headless browser. Both the home button and the
+  // settings link did nothing until they were switched to real navigations.
+  const src = readSource('components/player/PlayerNavbar.tsx');
+  const codeLines = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l));
+
+  assert.deepEqual(
+    codeLines.filter((l) => /router\.push\(/.test(l)), [],
+    'router.push() in PlayerNavbar does nothing on the player page — use ' +
+    'window.location.href (FORK-SYNC-GUIDELINE 第四節第 9 點)'
+  );
+  assert.doesNotMatch(
+    src, /from\s+'next\/link'/,
+    'next/link intercepts clicks and routes client-side, which is inert here'
+  );
+  // router.back() is fine — browser history still works.
+  assert.match(src, /router\.back\(\)/, 'the back button should still use router.back()');
+});
+
 test('background source discovery re-runs for each video', () => {
   const src = readSource('app/player/page.tsx');
   // 一個永不重置的 boolean 會讓第二支影片起直接 early-return。
