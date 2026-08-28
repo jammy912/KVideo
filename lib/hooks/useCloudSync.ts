@@ -35,6 +35,17 @@ export function useCloudSync(isPremium = false) {
       const favorites = keepRenderableFavorites(data.favorites);
 
       if (history.length > 0) {
+        // __KVDEBUG__ temporary: pull replaces the WHOLE local history.
+        if (typeof window !== 'undefined') {
+          const before = historyStore.getState().viewingHistory;
+          console.log('[KVDEBUG cloudPull]', JSON.stringify({
+            localCount: before.length,
+            cloudCount: history.length,
+            local: before.slice(0, 5).map((h) => `${h.videoId}/${h.source}/${h.title}`),
+            cloud: (history as typeof before).slice(0, 5)
+              .map((h) => `${h.videoId}/${h.source}/${h.title}`),
+          }));
+        }
         historyStore.getState().importHistory(history);
       }
       if (favorites.length > 0) {

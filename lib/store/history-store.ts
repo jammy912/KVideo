@@ -122,6 +122,17 @@ const createHistoryStore = (name: string) =>
           const showIdentifier = generateShowIdentifier(title);
           const timestamp = Date.now();
 
+          // __KVDEBUG__ temporary: diagnosing history records being overwritten.
+          if (typeof window !== 'undefined') {
+            const caller = new Error().stack?.split('\n').slice(2, 6)
+              .map((l) => l.trim().replace(/^at\s+/, '').split(/[\s(]/)[0])
+              .filter(Boolean).join(' < ');
+            console.log('[KVDEBUG addToHistory]', JSON.stringify({
+              videoId, title, source, episodeIndex, showIdentifier,
+              url: String(url).slice(-45), pos: Math.round(playbackPosition), caller,
+            }));
+          }
+
           set((state) => {
             // Check if item already exists (by normalized title)
             const existingIndex = state.viewingHistory.findIndex(
@@ -132,6 +143,17 @@ const createHistoryStore = (name: string) =>
 
             if (existingIndex !== -1) {
               const existing = state.viewingHistory[existingIndex];
+
+              // __KVDEBUG__ temporary.
+              if (typeof window !== 'undefined') {
+                console.log('[KVDEBUG merge]', JSON.stringify({
+                  matchedIndex: existingIndex,
+                  existing: `${existing.videoId}/${existing.source}/${existing.title}`,
+                  incoming: `${videoId}/${source}/${title}`,
+                  idChanged: String(existing.videoId) !== String(videoId),
+                  srcChanged: existing.source !== source,
+                }));
+              }
               // Merge sourceMap
               const mergedSourceMap = {
                 ...(existing.sourceMap || { [existing.source]: existing.videoId }),
