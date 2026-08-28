@@ -495,13 +495,6 @@ function PlayerContent() {
             <div className="lg:col-span-2 xl:col-span-1 space-y-6">
               <div className="sm:mx-0">
                 <VideoPlayer
-                  // Remount on video change. SPA navigation from the history
-                  // sidebar reuses this page, so without a key the player kept
-                  // the previous video's error/proxy/retry state and, worse,
-                  // its playback position — which then got flushed into the new
-                  // video's history record. Before the sync a history click was
-                  // a full page reload, which reset all of this implicitly.
-                  key={discoveryKey}
                   playUrl={playUrl}
                   videoId={resolvedVideoId}
                   currentEpisode={currentEpisode}

@@ -105,9 +105,10 @@ export function VideoPlayer({
   useEffect(() => {
     identityRef.current = { videoId, title, playUrl, currentEpisode, source };
     // Discard the previous video's playback position at the same moment the
-    // identity changes. This component is reused across SPA navigation, so
-    // without this the trackers still hold the old video's time and the
-    // cleanup flush() would write it against the NEW video's identity.
+    // identity changes. This component is reused (not remounted) when the
+    // player navigates between videos, so without this the trackers still
+    // hold the old video's time and the cleanup flush() would write it
+    // against the NEW video's identity.
     currentTimeRef.current = 0;
     durationRef.current = 0;
     lastSaveTimeRef.current = 0;
