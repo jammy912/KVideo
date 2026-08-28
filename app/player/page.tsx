@@ -354,29 +354,41 @@ function PlayerContent() {
   const resolvedVideoId = videoData?.vod_id ?? videoId ?? undefined;
   const resolvedTitle = videoData?.vod_name || title || '未知视频';
 
-  // Add initial history entry when video data is loaded
+  // Add initial history entry when video data is loaded.
+  //
+  // `videoData` arrives from an async fetch while `videoId`/`source` come
+  // straight from the URL, so on navigation the URL updates first and this
+  // effect can run while videoData still holds the PREVIOUS video. Merely
+  // checking all four are truthy is not enough — they must describe the same
+  // video. Without this guard the previous video's vod_id was written under
+  // the new video's source/title, which is how one id ended up spread across
+  // several unrelated history records.
   useEffect(() => {
-    if (videoData && playUrl && videoId && source) {
-      // Map episodes to include index
-      const mappedEpisodes = videoData.episodes?.map((ep, idx) => ({
-        name: ep.name || `第${idx + 1}集`,
-        url: ep.url,
-        index: idx,
-      })) || [];
+    if (!videoData || !playUrl || !videoId || !source) return;
 
-      addToHistory(
-        videoData.vod_id ?? videoId,
-        videoData.vod_name || title || '未知视频',
-        playUrl,
-        currentEpisode,
-        source,
-        0, // Initial playback position
-        0, // Will be updated by VideoPlayer
-        videoData.vod_pic,
-        mappedEpisodes,
-        { vod_actor: videoData.vod_actor, type_name: videoData.type_name, vod_area: videoData.vod_area }
-      );
-    }
+    // The fetch keys on id+source, so vod_id must match the URL's id for the
+    // payload to belong to the video we are currently on. Sources that don't
+    // echo vod_id back are accepted as-is (nothing to contradict).
+    if (videoData.vod_id != null && String(videoData.vod_id) !== String(videoId)) return;
+
+    const mappedEpisodes = videoData.episodes?.map((ep, idx) => ({
+      name: ep.name || `第${idx + 1}集`,
+      url: ep.url,
+      index: idx,
+    })) || [];
+
+    addToHistory(
+      videoData.vod_id ?? videoId,
+      videoData.vod_name || title || '未知视频',
+      playUrl,
+      currentEpisode,
+      source,
+      0, // Initial playback position
+      0, // Will be updated by VideoPlayer
+      videoData.vod_pic,
+      mappedEpisodes,
+      { vod_actor: videoData.vod_actor, type_name: videoData.type_name, vod_area: videoData.vod_area }
+    );
   }, [videoData, playUrl, videoId, currentEpisode, source, title, addToHistory]);
 
   const handleEpisodeClick = useCallback((episode: { url: string }, index: number) => {

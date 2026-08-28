@@ -9,7 +9,6 @@ import type { VideoHistoryItem, Episode } from '@/lib/types';
 import { clearSegmentsForUrl, clearAllCache } from '@/lib/utils/cacheManager';
 import { profiledKey } from '@/lib/utils/profile-storage';
 import { traditionalToSimplified } from '@/lib/utils/chinese-convert';
-import { kvDebug } from '@/lib/utils/kv-debug'; // __KVDEBUG__ temporary
 
 const MAX_HISTORY_ITEMS = 50;
 
@@ -123,17 +122,6 @@ const createHistoryStore = (name: string) =>
           const showIdentifier = generateShowIdentifier(title);
           const timestamp = Date.now();
 
-          // __KVDEBUG__ temporary: diagnosing history records being overwritten.
-          // Recorded into a global buffer rather than console.log because
-          // next.config.ts strips console.* from production builds.
-          kvDebug('addToHistory', {
-            videoId, title, source, episodeIndex, showIdentifier,
-            url: String(url).slice(-45), pos: Math.round(playbackPosition),
-            caller: new Error().stack?.split('\n').slice(2, 6)
-              .map((l) => l.trim().replace(/^at\s+/, '').split(/[\s(]/)[0])
-              .filter(Boolean).join(' < '),
-          });
-
           set((state) => {
             // Check if item already exists (by normalized title)
             const existingIndex = state.viewingHistory.findIndex(
@@ -144,15 +132,6 @@ const createHistoryStore = (name: string) =>
 
             if (existingIndex !== -1) {
               const existing = state.viewingHistory[existingIndex];
-
-              // __KVDEBUG__ temporary.
-              kvDebug('merge', {
-                matchedIndex: existingIndex,
-                existing: `${existing.videoId}/${existing.source}/${existing.title}`,
-                incoming: `${videoId}/${source}/${title}`,
-                idChanged: String(existing.videoId) !== String(videoId),
-                srcChanged: existing.source !== source,
-              });
               // Merge sourceMap
               const mergedSourceMap = {
                 ...(existing.sourceMap || { [existing.source]: existing.videoId }),
