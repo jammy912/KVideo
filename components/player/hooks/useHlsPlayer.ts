@@ -28,12 +28,28 @@ export function useHlsPlayer({
 
     useEffect(() => {
         const video = videoRef.current;
-        if (!video || !src) return;
 
-        // Cleanup previous HLS instance
+        // Tear down the previous instance BEFORE the early return. Navigating
+        // between videos clears playUrl to '' for a render, and bailing out
+        // while an instance is still attached left the old stream playing off
+        // its blob URL: the page showed the new video's data but the <video>
+        // element kept the previous media (paused=false, currentTime intact).
+        // The cleanup below cannot cover this, because it closes over the
+        // local `hls` of the run that created it — a run that early-returns
+        // has nothing to destroy.
         if (hlsRef.current) {
             hlsRef.current.destroy();
             hlsRef.current = null;
+        }
+
+        if (!video || !src) {
+            // Also drop any media the browser is still holding, otherwise the
+            // stale frame stays on screen until the next source attaches.
+            if (video) {
+                video.removeAttribute('src');
+                video.load();
+            }
+            return;
         }
 
         let hls: Hls | null = null;
@@ -421,6 +437,9 @@ export function useHlsPlayer({
         return () => {
             if (hls) {
                 hls.destroy();
+                // Keep the ref in step so the next run's pre-teardown above
+                // does not destroy an already-destroyed instance.
+                if (hlsRef.current === hls) hlsRef.current = null;
             }
             extraBlobs.forEach(url => URL.revokeObjectURL(url));
         };
