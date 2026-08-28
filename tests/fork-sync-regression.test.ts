@@ -183,6 +183,29 @@ test('discovery key distinguishes the same id on different sources', () => {
   assert.notEqual(videoDiscoveryKey(null, null), videoDiscoveryKey('siteA', '1'));
 });
 
+test('history item navigates with a full page load, not router.push', () => {
+  // Verified in a headless browser: router.push() from this component is inert
+  // — the handler runs to completion (calling onClick directly returns without
+  // throwing) but produces no pushState, no re-render and no URL change, while
+  // a plain anchor click to the same URL navigates fine. Symptom was "sidebar
+  // closes but the player keeps playing the previous video".
+  const src = readSource('components/history/HistoryItem.tsx');
+  assert.match(
+    src, /window\.location\.href\s*=\s*getVideoUrl\(\)/,
+    'HistoryItem must navigate via window.location.href — router.push() does ' +
+    'nothing here and the click appears to be ignored'
+  );
+  // Ignore comment lines — this file explains *why* router.push is avoided.
+  const codeLines = src
+    .split('\n')
+    .filter((line) => !/^\s*(\/\/|\*|\/\*)/.test(line));
+  assert.deepEqual(
+    codeLines.filter((line) => /router\.push\(/.test(line)), [],
+    'router.push() reintroduced in HistoryItem: clicking a history entry will ' +
+    'close the sidebar without changing the video'
+  );
+});
+
 test('background source discovery re-runs for each video', () => {
   const src = readSource('app/player/page.tsx');
   // 一個永不重置的 boolean 會讓第二支影片起直接 early-return。

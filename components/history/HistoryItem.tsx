@@ -4,7 +4,6 @@
  */
 
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
 import { Icons } from '@/components/ui/Icon';
 import { formatTime, formatDate } from '@/lib/utils/format-utils';
 import { PosterImage } from './PosterImage';
@@ -20,7 +19,6 @@ interface HistoryItemProps {
 }
 
 export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemProps) {
-  const router = useRouter();
 
   const getVideoUrl = (): string => {
     const params = new URLSearchParams({
@@ -71,7 +69,17 @@ export function HistoryItem({ item, onRemove, isPremium = false }: HistoryItemPr
     // back-navigation always) doesn't keep the panel hanging open.
     window.dispatchEvent(new CustomEvent('kvideo-close-history-sidebar'));
 
-    router.push(getVideoUrl());
+    // Full navigation rather than router.push(). Verified in a headless
+    // browser: calling this component's onClick directly (bypassing DOM event
+    // dispatch entirely) returns without throwing, yet router.push() produces
+    // no pushState, no re-render and no URL change — while a plain anchor
+    // click to the *same* URL navigates correctly. Something about the router
+    // instance held here is inert, and the symptom was "sidebar closes but the
+    // player keeps playing the previous video".
+    //
+    // Auto-fullscreen still works: it is driven by the sessionStorage flag set
+    // above, which the player reads after mounting, so it survives a full load.
+    window.location.href = getVideoUrl();
   };
 
   const progress = (item.playbackPosition / item.duration) * 100;
